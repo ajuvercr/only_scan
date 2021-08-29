@@ -4,7 +4,7 @@ const dragger = function (draw_f) {
     let canvas = document.getElementById("canvas")
     let ctx = canvas.getContext('2d')
 
-    let width, heigh = 0;
+    let width, height = 0;
 
     let cameraOffset = { x: 0, y: 0 }
     let cameraZoom = 1

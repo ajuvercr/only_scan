@@ -24,7 +24,7 @@ async function upload_file(file) {
 
 const elements = {};
 
-["textbox", "myFileInput", "picPreview", "ref_img"].forEach(x => elements[x] = document.getElementById(x));
+["textbox", "myFileInput", "picPreview", "ref_img", "canvas2"].forEach(x => elements[x] = document.getElementById(x));
 
 function setPicToManipulate() {
     var file = elements.myFileInput.files[0];
@@ -52,6 +52,8 @@ const image = new Image(); // Using optional size for image
 image.onload = drawImageActualSize; // Draw when image has loaded
 
 let drag = undefined;
+let crop = undefined;
+
 // Load an image of intrinsic size 300x227 in CSS pixels
 image.src = 'test.jpg';
 
@@ -75,6 +77,10 @@ function drawImageActualSize() {
     });
 
     drag.start();
+
+    crop = cropper(elements.canvas2, this);
+
+    crop.start();
 }
 
 function capture_img() {
