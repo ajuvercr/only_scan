@@ -23,8 +23,18 @@ async function upload_file(file) {
 }
 
 const elements = {};
+async function main() {
+    ["image", "textbox", "myFileInput", "picPreview", "ref_img", "canvas2"].forEach(x => elements[x] = document.getElementById(x));
 
-["textbox", "myFileInput", "picPreview", "ref_img", "canvas2"].forEach(x => elements[x] = document.getElementById(x));
+    resize_content();
+
+}
+
+function resize_content() {
+    const rect = elements.content.getBoundingClientRect();
+    elements.picPreview.width = rect.width;
+    elements.picPreview.height = rect.height;
+}
 
 function setPicToManipulate() {
     var file = elements.myFileInput.files[0];
@@ -48,14 +58,14 @@ function sendPic() {
     // the `send` method of an XHR instance.
 }
 
-const image = new Image(); // Using optional size for image
-image.onload = drawImageActualSize; // Draw when image has loaded
+// const image = new Image(); // Using optional size for image
+// image.onload = drawImageActualSize; // Draw when image has loaded
 
-let drag = undefined;
-let crop = undefined;
+// let drag = undefined;
+// let crop = undefined;
 
-// Load an image of intrinsic size 300x227 in CSS pixels
-image.src = 'test.jpg';
+// // Load an image of intrinsic size 300x227 in CSS pixels
+// image.src = 'test.jpg';
 
 function drawImageActualSize() {
     // Use the intrinsic size of image in CSS pixels for the canvas element
@@ -92,11 +102,12 @@ function capture_img() {
 }
 
 
-elements.myFileInput.addEventListener('change', setPicToManipulate, false);
+// elements.myFileInput.addEventListener('change', setPicToManipulate, false);
 
-
-
-
+window.addEventListener('resize', resize_content);
+window.addEventListener('load', () => {
+    main();
+});
 
 // elements.ref_img.addEventListener('load', e => {
 //     drag.force_draw()

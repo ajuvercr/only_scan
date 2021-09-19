@@ -1,8 +1,9 @@
-* {
-  background-color: #ff7f00;
+html,
+body {
+  height: 100vh;
   margin: 0;
-  padding: 0;
 }
+
 body:not(.lc_mousedrag_is_mobile) #inner {
   overflow: hidden;
   cursor: grab;
@@ -27,4 +28,29 @@ body:not(.lc_mousedrag_is_mobile) #inner {
   height: 500px;
   border: 5px solid black;
   box-sizing: border-box;
+}
+
+.content {
+}
+
+.wrapper {
+  position: absolute;
+  top: 0;
+  bottom: 100%;
+}
+
+img {
+  max-width: 100%;
+  width: auto;
+  object-fit: scale-down;
+}
+
+#image {
+}
+
+.main {
+  display: grid;
+  grid-template-rows: auto 50px;
+  height: 100vh;
+  max-height: 100vh;
 }
