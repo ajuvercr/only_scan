@@ -14,14 +14,17 @@
 
 <body>
     <div class="main">
-        <div class="content">
-            <img src="test.jpg" id="picPreview" height="500px" width="100px" />
+        <div class="content" id="content">
+            <div class="handles">
+                <div class="handle" id="handle0"></div>
+                <div class="handle" id="handle1"></div>
+                <div class="handle" id="handle2"></div>
+                <div class="handle" id="handle3"></div>
+            </div>
         </div>
         <div class="bottom">
             <div class="bottom-item">
-                <button>
-                    Upload!
-                </button>
+                <input id="myFileInput" type="file" accept="image/*;capture=camera">
             </div>
             <div class="bottom-item">
                 <button>
@@ -38,7 +41,6 @@
 
     <p id="textbox"></p>
 
-    <input id="myFileInput" type="file" accept="image/*;capture=camera">
     <button onclick="setPicToManipulate()">Force try!</button>
 
 

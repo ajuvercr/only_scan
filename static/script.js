@@ -24,23 +24,37 @@ async function upload_file(file) {
 
 const elements = {};
 async function main() {
-    ["image", "textbox", "myFileInput", "picPreview", "ref_img", "canvas2"].forEach(x => elements[x] = document.getElementById(x));
+    ["handle0", "handle1", "handle2", "handle3", "content", "myFileInput"].forEach(x => elements[x] = document.getElementById(x));
+    elements.myFileInput.addEventListener('change', setPicToManipulate, false);
 
-    resize_content();
-
+    setup_handles();
 }
 
-function resize_content() {
-    const rect = elements.content.getBoundingClientRect();
-    elements.picPreview.width = rect.width;
-    elements.picPreview.height = rect.height;
+function setup_handles() {
+    const handles = [...Array(4).keys()].map(i => elements["handle" + i]);
+
+    const corners = [[0, 0], [100, 0], [100, 100], [0, 100]]
+
+    for (let j = 3, i = 0; i < 4; j = i++) {
+        const [top, left] = corners[i];
+        handles[i].style.top = top + "%";
+        handles[i].style.left = left + "%";
+
+
+        if (i % 2 == 0) { // This could be wong, and that is ok
+            handles[i]["vert_neigh"] = handles[j];
+            handles[j]["hor_neigh"] = handles[i];
+        } else {
+            handles[i]["hor_neigh"] = handles[j];
+            handles[j]["vert_neigh"] = handles[i];
+        }
+    }
 }
 
 function setPicToManipulate() {
     var file = elements.myFileInput.files[0];
-    elements.picPreview.src = URL.createObjectURL(file)
-
-    lc_mouseDrag('#inner');
+    if (file)
+        elements.content.style["background-image"] = `url("${URL.createObjectURL(file)}")`
 }
 
 function sendPic() {
@@ -102,12 +116,7 @@ function capture_img() {
 }
 
 
-// elements.myFileInput.addEventListener('change', setPicToManipulate, false);
-
-window.addEventListener('resize', resize_content);
-window.addEventListener('load', () => {
-    main();
-});
+window.addEventListener('load', main);
 
 // elements.ref_img.addEventListener('load', e => {
 //     drag.force_draw()
