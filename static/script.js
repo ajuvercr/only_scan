@@ -166,6 +166,7 @@ function sendPic() {
         console.log(field);
         s[field] = file[field];
     }
+
     upload_file(file).then(x => elements.textbox.innerHTML += x);
 
     // Send file here either by adding it to a `FormData` object
