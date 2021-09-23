@@ -22,33 +22,134 @@ async function upload_file(file) {
     };
 }
 
+function calculate_image_background_box(box, aspect) {
+    let width, height;
+
+    if (box.width * aspect > box.height) {
+        height = box.height;
+        width = box.height / aspect;
+    } else {
+        width = box.width;
+        height = box.width * aspect;
+    }
+
+    const top = (box.height - height) / 2;
+    const left = (box.width - width) / 2;
+
+    return [top, left, width, height];
+}
+
 const elements = {};
 async function main() {
-    ["handle0", "handle1", "handle2", "handle3", "content", "myFileInput"].forEach(x => elements[x] = document.getElementById(x));
+    ["handles", "handle0", "handle1", "handle2", "handle3", "content", "myFileInput", "target"].forEach(x => elements[x] = document.getElementById(x));
     elements.myFileInput.addEventListener('change', setPicToManipulate, false);
 
+    const image = new Image();
+
+    image.onload = function () {
+        const box = elements["content"].getBoundingClientRect();
+        let image_aspect = this.naturalHeight / this.naturalWidth;
+        const [top, left, width, height] = calculate_image_background_box(box, image_aspect);
+
+        const rect = elements["handles"];
+        rect.style.top = top + "px";
+        rect.style.left = left + "px";
+        rect.style.width = width + "px";
+        rect.style.height = height + "px";
+
+        rect.__mu = {};
+        rect.__mu.top = top;
+        rect.__mu.left = left;
+
+        rect.__mu.orig_top = top;
+        rect.__mu.orig_left = left;
+
+        rect.__mu.width = width;
+        rect.__mu.height = height;
+
+        rect.__mu.orig_width = width;
+        rect.__mu.orig_height = height;
+
+        setTimeout(() => {
+            do_crop(rect, image);
+        }, 2000)
+    };
+
+    image.src = "test.jpg";
     setup_handles();
+
 }
+
+function do_crop(rect, image) {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+
+
+    const [left, top, width, height] = [
+        rect.__mu.left - rect.__mu.orig_left,
+        rect.__mu.top - rect.__mu.orig_top,
+        rect.__mu.width,
+        rect.__mu.height
+    ]
+
+    const zoomWidth = image.naturalWidth / rect.__mu.orig_width;
+    const zoomHeight = image.naturalHeight / rect.__mu.orig_height;
+
+    canvas.width = width * zoomWidth;
+    canvas.height = height * zoomHeight;
+
+    ctx.drawImage(image,
+        left * zoomWidth, top * zoomHeight, width * zoomWidth, height * zoomHeight,
+        0, 0, width * zoomWidth, height * zoomHeight
+    );
+
+
+    canvas.toDataURL();
+
+    setTimeout(
+        () => elements["target"].src = canvas.toDataURL(),
+        100
+    );
+}
+
 
 function setup_handles() {
     const handles = [...Array(4).keys()].map(i => elements["handle" + i]);
 
-    const corners = [[0, 0], [100, 0], [100, 100], [0, 100]]
+    const rect = elements["handles"];
 
-    for (let j = 3, i = 0; i < 4; j = i++) {
-        const [top, left] = corners[i];
-        handles[i].style.top = top + "%";
-        handles[i].style.left = left + "%";
+    if (!rect.__mu) rect.__mu = {};
 
+    const delta_left = (dy) => {
+        rect.__mu.left -= dy;
+        rect.__mu.width += dy;
 
-        if (i % 2 == 0) { // This could be wong, and that is ok
-            handles[i]["vert_neigh"] = handles[j];
-            handles[j]["hor_neigh"] = handles[i];
-        } else {
-            handles[i]["hor_neigh"] = handles[j];
-            handles[j]["vert_neigh"] = handles[i];
-        }
-    }
+        rect.style.left = rect.__mu.left + "px";
+        rect.style.width = rect.__mu.width + "px";
+    };
+
+    const delta_right = (dy) => {
+        rect.__mu.width -= dy;
+        rect.style.width = rect.__mu.width + "px";
+    };
+
+    const delta_top = (dy) => {
+        rect.__mu.top -= dy;
+        rect.__mu.height += dy;
+
+        rect.style.top = rect.__mu.top + "px";
+        rect.style.height = rect.__mu.height + "px";
+    };
+
+    const delta_bottom = (dy) => {
+        rect.__mu.height -= dy;
+        rect.style.height = rect.__mu.height + "px";
+    };
+
+    dragger(handles[0], delta_left, delta_top);
+    dragger(handles[1], delta_right, delta_top);
+    dragger(handles[2], delta_right, delta_bottom);
+    dragger(handles[3], delta_left, delta_bottom);
 }
 
 function setPicToManipulate() {

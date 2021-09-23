@@ -14,7 +14,7 @@ body:not(.lc_mousedrag_is_mobile) #inner {
   background-position: center;
   background-size: contain;
   background-repeat: no-repeat;
-
+  margin: 20px;
   position: relative;
 }
 
@@ -38,24 +38,40 @@ body:not(.lc_mousedrag_is_mobile) #inner {
 
 .handles {
   position: absolute;
-  width: 300px;
-  height: 500px;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-
   background-color: rgba(0, 0, 0, 0.2);
 }
 
-.handle{
+.handle {
   position: absolute;
   display: inline-block;
   width: 15px;
   height: 15px;
-  margin-left: -7.5px;
-  margin-top: -7.5px;
   -moz-border-radius: 7.5px;
   -webkit-border-radius: 7.5px;
   border-radius: 7.5px;
   background-color: #69b6d5;
+}
+
+#handle0 {
+  top: 0;
+  left: 0;
+  transform: translate(-50%, -50%);
+}
+
+#handle1 {
+  top: 0;
+  right: 0;
+  transform: translate(50%, -50%);
+}
+
+#handle2 {
+  bottom: 0;
+  right: 0;
+  transform: translate(50%, 50%);
+}
+
+#handle3 {
+  bottom: 0;
+  left: 0;
+  transform: translate(-50%, 50%);
 }
