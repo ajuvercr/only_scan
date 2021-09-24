@@ -22,6 +22,155 @@ async function upload_file(file) {
     };
 }
 
+class ImageHandler {
+    constructor(parent, element, image, handles) {
+        this.element = element;
+        this.parent = parent;
+        this.should_resize = true;
+
+        this.orig = {
+            top: 0,
+            left: 0,
+            width: 1,
+            height: 1
+        };
+
+        this.pos = {
+            top: 0,
+            left: 0,
+            width: 1,
+            height: 1
+        };
+
+
+        this.anim = this.do_resize.bind(this);
+
+        this.set_element_style();
+
+        dragger(handles[0], this.delta_left.bind(this), this.delta_top.bind(this));
+        dragger(handles[1], this.delta_right.bind(this), this.delta_top.bind(this));
+        dragger(handles[2], this.delta_right.bind(this), this.delta_bottom.bind(this));
+        dragger(handles[3], this.delta_left.bind(this), this.delta_bottom.bind(this));
+
+        if (image) this.set_image(image);
+        requestAnimationFrame(this.anim);
+    }
+
+    set_image(image) {
+        console.log(image);
+        const data_url = image_to_data_url(image);
+        this.image = image;
+        this.parent.style["background-image"] = `url("${data_url}")`
+        this.should_resize = true;
+    }
+
+    set_element_style() {
+        this.element.style.top = this.pos.top + "px";
+        this.element.style.left = this.pos.left + "px";
+        this.element.style.width = this.pos.width + "px";
+        this.element.style.height = this.pos.height + "px";
+    }
+
+    resize() {
+        this.should_resize = true;
+    }
+
+    do_resize() {
+        if (!this.image) return;
+        if (!this.should_resize) {
+            requestAnimationFrame(this.anim);
+            return;
+        }
+        this.should_resize = false;
+
+        const box = this.parent.getBoundingClientRect();
+        let image_aspect = this.image.naturalHeight / this.image.naturalWidth;
+        const [top, left, width, height] = calculate_image_background_box(box, image_aspect);
+
+        // Fast and dirty zero check
+        const rule_three = (orig, current, value) => (orig && current && value) ? current / orig * value : 0;
+
+        this.pos.top = rule_three(this.orig.height, height, this.pos.top - this.orig.top) + top;
+        this.pos.left = rule_three(this.orig.width, width, this.pos.left - this.orig.left) + left;
+        this.pos.width = rule_three(this.orig.width, width, this.pos.width);
+        this.pos.height = rule_three(this.orig.height, height, this.pos.height);
+
+        this.orig = {
+            top: top,
+            left: left,
+            width: width,
+            height: height
+        };
+        requestAnimationFrame(this.anim);
+    }
+
+    delta_left(dy) {
+        this.pos.left -= dy;
+        this.pos.width += dy;
+
+        this.element.style.left = this.pos.left + "px";
+        this.element.style.width = this.pos.width + "px";
+    }
+
+    delta_right(dy) {
+        this.pos.width -= dy;
+        this.element.style.width = this.pos.width + "px";
+    }
+
+    delta_top(dy) {
+        this.pos.top -= dy;
+        this.pos.height += dy;
+
+        this.element.style.top = this.pos.top + "px";
+        this.element.style.height = this.pos.height + "px";
+    }
+
+    delta_bottom(dy) {
+        this.pos.height -= dy;
+        this.element.style.height = this.pos.height + "px";
+    }
+
+    crop() {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+
+        const [left, top, width, height] = [
+            this.pos.left - this.orig.left,
+            this.pos.top - this.orig.top,
+            this.pos.width,
+            this.pos.height
+        ]
+
+        const zoomWidth = this.image.naturalWidth / this.orig.width;
+        const zoomHeight = this.image.naturalHeight / this.orig.height;
+
+        canvas.width = width * zoomWidth;
+        canvas.height = height * zoomHeight;
+
+        ctx.drawImage(this.image,
+            left * zoomWidth, top * zoomHeight, width * zoomWidth, height * zoomHeight,
+            0, 0, width * zoomWidth, height * zoomHeight
+        );
+
+        return canvas.toDataURL();
+    }
+}
+
+function image_to_data_url(image) {
+    if (image instanceof HTMLImageElement) {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+
+        canvas.width = image.naturalWidth;
+        canvas.height = image.naturalHeight;
+
+        ctx.drawImage(image, 0, 0);
+        return canvas.toDataURL("image/jpeg");
+    } else {
+        return URL.createObjectURL(image);
+    }
+}
+
 function calculate_image_background_box(box, aspect) {
     let width, height;
 
@@ -47,110 +196,22 @@ async function main() {
     const image = new Image();
 
     image.onload = function () {
-        const box = elements["content"].getBoundingClientRect();
-        let image_aspect = this.naturalHeight / this.naturalWidth;
-        const [top, left, width, height] = calculate_image_background_box(box, image_aspect);
 
-        const rect = elements["handles"];
-        rect.style.top = top + "px";
-        rect.style.left = left + "px";
-        rect.style.width = width + "px";
-        rect.style.height = height + "px";
+        const handles = [...Array(4).keys()].map(i => elements["handle" + i]);
 
-        rect.__mu = {};
-        rect.__mu.top = top;
-        rect.__mu.left = left;
+        const image_handler = new ImageHandler(elements["content"], elements["handles"], image, handles);
 
-        rect.__mu.orig_top = top;
-        rect.__mu.orig_left = left;
-
-        rect.__mu.width = width;
-        rect.__mu.height = height;
-
-        rect.__mu.orig_width = width;
-        rect.__mu.orig_height = height;
+        window.addEventListener("resize", image_handler.resize.bind(image_handler));
 
         setTimeout(() => {
-            do_crop(rect, image);
+            const data = image_handler.crop();
+            elements["target"].src = data;
         }, 2000)
     };
 
     image.src = "test.jpg";
-    setup_handles();
-
 }
 
-function do_crop(rect, image) {
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-
-
-    const [left, top, width, height] = [
-        rect.__mu.left - rect.__mu.orig_left,
-        rect.__mu.top - rect.__mu.orig_top,
-        rect.__mu.width,
-        rect.__mu.height
-    ]
-
-    const zoomWidth = image.naturalWidth / rect.__mu.orig_width;
-    const zoomHeight = image.naturalHeight / rect.__mu.orig_height;
-
-    canvas.width = width * zoomWidth;
-    canvas.height = height * zoomHeight;
-
-    ctx.drawImage(image,
-        left * zoomWidth, top * zoomHeight, width * zoomWidth, height * zoomHeight,
-        0, 0, width * zoomWidth, height * zoomHeight
-    );
-
-
-    canvas.toDataURL();
-
-    setTimeout(
-        () => elements["target"].src = canvas.toDataURL(),
-        100
-    );
-}
-
-
-function setup_handles() {
-    const handles = [...Array(4).keys()].map(i => elements["handle" + i]);
-
-    const rect = elements["handles"];
-
-    if (!rect.__mu) rect.__mu = {};
-
-    const delta_left = (dy) => {
-        rect.__mu.left -= dy;
-        rect.__mu.width += dy;
-
-        rect.style.left = rect.__mu.left + "px";
-        rect.style.width = rect.__mu.width + "px";
-    };
-
-    const delta_right = (dy) => {
-        rect.__mu.width -= dy;
-        rect.style.width = rect.__mu.width + "px";
-    };
-
-    const delta_top = (dy) => {
-        rect.__mu.top -= dy;
-        rect.__mu.height += dy;
-
-        rect.style.top = rect.__mu.top + "px";
-        rect.style.height = rect.__mu.height + "px";
-    };
-
-    const delta_bottom = (dy) => {
-        rect.__mu.height -= dy;
-        rect.style.height = rect.__mu.height + "px";
-    };
-
-    dragger(handles[0], delta_left, delta_top);
-    dragger(handles[1], delta_right, delta_top);
-    dragger(handles[2], delta_right, delta_bottom);
-    dragger(handles[3], delta_left, delta_bottom);
-}
 
 function setPicToManipulate() {
     var file = elements.myFileInput.files[0];
@@ -176,9 +237,6 @@ function sendPic() {
 
 // const image = new Image(); // Using optional size for image
 // image.onload = drawImageActualSize; // Draw when image has loaded
-
-// let drag = undefined;
-// let crop = undefined;
 
 // // Load an image of intrinsic size 300x227 in CSS pixels
 // image.src = 'test.jpg';

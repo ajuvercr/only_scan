@@ -10,7 +10,6 @@ body:not(.lc_mousedrag_is_mobile) #inner {
 }
 
 .content {
-  background-image: url("test.jpg");
   background-position: center;
   background-size: contain;
   background-repeat: no-repeat;
