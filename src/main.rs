@@ -1,8 +1,7 @@
 use rocket::form::{Contextual, Form};
 use rocket::fs::{NamedFile, TempFile};
-use rocket::response::Redirect;
 use std::path::{Path, PathBuf};
-use std::{convert::TryInto, ffi::OsStr, io::Read, process::Command};
+use std::{ffi::OsStr, process::Command};
 
 #[macro_use]
 extern crate rocket;
@@ -52,7 +51,9 @@ async fn upload(mut file: TempFile<'_>) -> Option<String> {
         "/tmp/hallo2.jpg",
     ])?;
 
-    read_command(["tesseract", "/tmp/hallo2.jpg", "-"])
+    let out = read_command(["tesseract", "/tmp/hallo2.jpg", "-"]);
+    println!("Output {:?}", out);
+    out
 }
 
 #[post("/upload2", data = "<form>")]

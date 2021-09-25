@@ -1,72 +1,86 @@
+const ACTIONS = {
+    DOWN: "down",
+    UP: "up",
+    MOVE: "move",
+}
 
-const dragger = function (element, horizontal, vertical) {
-    let start_x = 0;
-    let start_y = 0;
-    let current_x = 0;
-    let current_y = 0;
-    let changed = true;
+function getEventLocation(e) {
+    if (e.touches && e.touches.length == 1) {
+        return [e.touches[0].clientX, e.touches[0].clientY];
+    }
+    else if (e.clientX && e.clientY) {
+        return [e.clientX, e.clientY];
+    }
+}
 
-    function flush() {
-        if (changed) {
-            horizontal(start_x - current_x);
-            vertical(start_y - current_y);
-        }
+class Dragger {
+    constructor(element, horizontal, vertical, meta = null) {
+        this.hor_f = horizontal;
+        this.vert_f = vertical;
 
-        start_x = current_x;
-        start_y = current_y;
+        this.is_dragging = false;
 
-        requestAnimationFrame(flush);
+        this.meta = meta;
+        this.last_x = 0;
+        this.last_y = 0;
+
+        element.addEventListener('mousedown', this.onPointerDown.bind(this));
+
+        element.addEventListener('touchstart', (e) => {
+            this.handleTouch(e, ACTIONS.DOWN)
+        })
+        element.addEventListener('mouseup', this.onPointerUp.bind(this))
+        element.addEventListener('touchend', (e) => {
+            this.handleTouch(e, ACTIONS.UP)
+        });
+        element.addEventListener('mousemove', this.onPointerMove.bind(this))
+        element.addEventListener('touchmove', (e) => {
+            this.handleTouch(e, ACTIONS.MOVE)
+        })
     }
 
-    // Gets the relevant location from a mouse or single touch event
-    function getEventLocation(e) {
-        if (e.touches && e.touches.length == 1) {
-            return [e.touches[0].clientX, e.touches[0].clientY];
-        }
-        else if (e.clientX && e.clientY) {
-            return [e.clientX, e.clientY];
-        }
-    }
-
-    let isDragging = false
-
-    function onPointerDown(e) {
-        isDragging = true;
+    onPointerDown(e) {
+        this.is_dragging = true;
 
         const [x, y] = getEventLocation(e);
-        start_x = (start_x - current_x) + x;
-        start_y = (start_y - current_y) + y;
+
+        this.last_x = x;
+        this.last_y = y;
     }
 
-    function onPointerUp(e) {
-        isDragging = false
-    }
-
-    function onPointerMove(e) {
-        if (isDragging) {
+    onPointerMove(e) {
+        if (this.is_dragging) {
             const [x, y] = getEventLocation(e);
 
-            current_x = x;
-            current_y = y;
-            changed = true;
+            if (this.last_x - x != 0) {
+                this.hor_f(this.last_x - x);
+            }
+
+            if (this.last_y - y != 0) {
+                this.vert_f(this.last_y - y);
+            }
+
+            this.last_x = x;
+            this.last_y = y;
         }
     }
 
-    function handleTouch(e, singleTouchHandler) {
+    onPointerUp(e) {
+        this.is_dragging = false
+    }
+
+    handleTouch(e, action) {
         if (e.touches.length == 1) {
-            singleTouchHandler(e)
+            switch (action) {
+                case ACTIONS.DOWN:
+                    this.onPointerDown(e); break;
+
+                case ACTIONS.UP:
+                    this.onPointerUp(e); break;
+
+                case ACTIONS.MOVE:
+                    this.onPointerMove(e); break;
+            }
         }
     }
-
-    element.addEventListener('mousedown', onPointerDown)
-    document.addEventListener('touchstart', (e) => handleTouch(e, onPointerDown))
-    document.addEventListener('mouseup', onPointerUp)
-    document.addEventListener('touchend', (e) => handleTouch(e, onPointerUp))
-    document.addEventListener('mousemove', onPointerMove)
-    document.addEventListener('touchmove', (e) => handleTouch(e, onPointerMove))
-
-    // Ready, set, go
-    flush();
-
-    return this;
-};
+}

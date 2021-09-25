@@ -1,9 +1,7 @@
 
 async function upload_file(file) {
-    console.log(file);
     var xmlHttpRequest = new XMLHttpRequest();
 
-    console.log(file);
     var mimeType = "image/png";
     const fileName = file.name;
 
@@ -32,12 +30,19 @@ class ImageHandler {
 
         this.set_element_style();
 
-        dragger(handles[0], this.delta_left.bind(this), this.delta_top.bind(this));
-        dragger(handles[1], this.delta_right.bind(this), this.delta_top.bind(this));
-        dragger(handles[2], this.delta_right.bind(this), this.delta_bottom.bind(this));
-        dragger(handles[3], this.delta_left.bind(this), this.delta_bottom.bind(this));
+        const left_f = this.delta_left.bind(this);
+        const right_f = this.delta_right.bind(this);
+        const top_f = this.delta_top.bind(this);
+        const bot_f = this.delta_bottom.bind(this);
+
+
+        new Dragger(handles[0], left_f, top_f, 0);
+        new Dragger(handles[1], right_f, top_f, 1);
+        new Dragger(handles[2], right_f, bot_f, 2);
+        new Dragger(handles[3], left_f, bot_f, 3);
 
         if (image) this.set_image(image);
+
         requestAnimationFrame(this.anim);
     }
 
@@ -89,6 +94,8 @@ class ImageHandler {
         }
         this.should_resize = false;
 
+        console.log("HERE");
+
         const box = this.parent.getBoundingClientRect();
         let image_aspect = this.image.naturalHeight / this.image.naturalWidth;
         const [top, left, width, height] = calculate_image_background_box(box, image_aspect);
@@ -107,6 +114,13 @@ class ImageHandler {
             width: width,
             height: height
         };
+
+        this.delta_left(0);
+        this.delta_top(0);
+
+        this.delta_right(0);
+        this.delta_bottom(0);
+
         requestAnimationFrame(this.anim);
     }
 
@@ -225,7 +239,6 @@ async function main() {
 
 function setPicToManipulate() {
     const file = elements.myFileInput.files[0];
-    console.log(file);
     if (file) {
         const image = new Image();
         // This feel unnecessary
@@ -234,57 +247,40 @@ function setPicToManipulate() {
     }
 }
 
-function sendPic() {
-    var file = elements.myFileInput.files[0];
-    const s = {};
-
-    for (let field in file) {
-        console.log(field);
-        s[field] = file[field];
-    }
-
-    upload_file(file).then(x => elements.textbox.innerHTML += x);
-
-    // Send file here either by adding it to a `FormData` object
-    // and sending that via XHR, or by simply passing the file into
-    // the `send` method of an XHR instance.
-}
-
 // const image = new Image(); // Using optional size for image
 // image.onload = drawImageActualSize; // Draw when image has loaded
 
 // // Load an image of intrinsic size 300x227 in CSS pixels
 // image.src = 'test.jpg';
 
-function drawImageActualSize() {
-    // Use the intrinsic size of image in CSS pixels for the canvas element
-    const w = this.naturalWidth;
-    const h = this.naturalHeight;
+// function drawImageActualSize() {
+//     // Use the intrinsic size of image in CSS pixels for the canvas element
+//     const w = this.naturalWidth;
+//     const h = this.naturalHeight;
 
-    const aspect = w / h;
+//     const aspect = w / h;
 
 
-    drag = dragger((ctx, width, height, zoom, offsetx, offsety) => {
-        if (ctx instanceof CanvasRenderingContext2D) {
-            console.log(width, height, zoom, offsetx, offsety)
-            if (width < height * aspect) {
-                ctx.drawImage(this, 0, 0, width, width / aspect)
-            } else {
-                ctx.drawImage(this, 0, 0, height * aspect, height)
-            }
-        }
-    });
+//     drag = dragger((ctx, width, height, zoom, offsetx, offsety) => {
+//         if (ctx instanceof CanvasRenderingContext2D) {
+//             if (width < height * aspect) {
+//                 ctx.drawImage(this, 0, 0, width, width / aspect)
+//             } else {
+//                 ctx.drawImage(this, 0, 0, height * aspect, height)
+//             }
+//         }
+//     });
 
-    drag.start();
+//     drag.start();
 
-    crop = cropper(elements.canvas2, this);
+//     crop = cropper(elements.canvas2, this);
 
-    crop.start();
-}
+//     crop.start();
+// }
 
 function capture_img() {
-    const data = image_handler.crop();
-    elements["target"].src = data;
+    // const data = image_handler.crop();
+    // elements["target"].src = data;
 
     image_handler.upload();
 
