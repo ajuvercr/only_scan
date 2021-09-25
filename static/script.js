@@ -2,8 +2,9 @@
 async function upload_file(file) {
     var xmlHttpRequest = new XMLHttpRequest();
 
-    var fileName = file.name;
-    var mimeType = "plain";
+    console.log(file);
+    var mimeType = "image/png";
+    const fileName = file.name;
 
     xmlHttpRequest.open('POST', '/upload', true);
     xmlHttpRequest.setRequestHeader('Content-Type', mimeType);
@@ -15,8 +16,6 @@ async function upload_file(file) {
             if (xmlHttpRequest.status === 200) {
                 console.log(xmlHttpRequest.response);
                 console.log(xmlHttpRequest.responseText);
-
-                elements.textbox.innerHTML += xmlHttpRequest.responseText;
             }
         }
     };
@@ -26,6 +25,22 @@ class ImageHandler {
     constructor(parent, element, image, handles) {
         this.element = element;
         this.parent = parent;
+        this.init();
+
+        this.anim = this.do_resize.bind(this);
+
+        this.set_element_style();
+
+        dragger(handles[0], this.delta_left.bind(this), this.delta_top.bind(this));
+        dragger(handles[1], this.delta_right.bind(this), this.delta_top.bind(this));
+        dragger(handles[2], this.delta_right.bind(this), this.delta_bottom.bind(this));
+        dragger(handles[3], this.delta_left.bind(this), this.delta_bottom.bind(this));
+
+        if (image) this.set_image(image);
+        requestAnimationFrame(this.anim);
+    }
+
+    init() {
         this.should_resize = true;
 
         this.orig = {
@@ -41,24 +56,13 @@ class ImageHandler {
             width: 1,
             height: 1
         };
-
-
-        this.anim = this.do_resize.bind(this);
-
-        this.set_element_style();
-
-        dragger(handles[0], this.delta_left.bind(this), this.delta_top.bind(this));
-        dragger(handles[1], this.delta_right.bind(this), this.delta_top.bind(this));
-        dragger(handles[2], this.delta_right.bind(this), this.delta_bottom.bind(this));
-        dragger(handles[3], this.delta_left.bind(this), this.delta_bottom.bind(this));
-
-        if (image) this.set_image(image);
-        requestAnimationFrame(this.anim);
     }
 
-    set_image(image) {
-        console.log(image);
-        const data_url = image_to_data_url(image);
+    set_image(image, data_url = null) {
+        if (!data_url) data_url = image_to_data_url(image);
+        this.init();
+
+        this.data_url = data_url;
         this.image = image;
         this.parent.style["background-image"] = `url("${data_url}")`
         this.should_resize = true;
@@ -76,8 +80,8 @@ class ImageHandler {
     }
 
     do_resize() {
-        if (!this.image) return;
-        if (!this.should_resize) {
+        // if (!this.image) return;
+        if (!this.should_resize || !this.image) {
             requestAnimationFrame(this.anim);
             return;
         }
@@ -154,6 +158,14 @@ class ImageHandler {
 
         return canvas.toDataURL();
     }
+
+    async upload() {
+        if (!this.data_url && this.image) this.data_url = image_to_data_url(this.image);
+        if (!this.data_url) return;
+
+        upload_file(this.image);
+
+    }
 }
 
 function image_to_data_url(image) {
@@ -189,34 +201,30 @@ function calculate_image_background_box(box, aspect) {
 }
 
 const elements = {};
+let image_handler = null;
 async function main() {
     ["handles", "handle0", "handle1", "handle2", "handle3", "content", "myFileInput", "target"].forEach(x => elements[x] = document.getElementById(x));
     elements.myFileInput.addEventListener('change', setPicToManipulate, false);
 
+    const handles = [...Array(4).keys()].map(i => elements["handle" + i]);
+    image_handler = new ImageHandler(elements["content"], elements["handles"], null, handles);
+    window.addEventListener("resize", image_handler.resize.bind(image_handler));
+
     const image = new Image();
-
-    image.onload = function () {
-
-        const handles = [...Array(4).keys()].map(i => elements["handle" + i]);
-
-        const image_handler = new ImageHandler(elements["content"], elements["handles"], image, handles);
-
-        window.addEventListener("resize", image_handler.resize.bind(image_handler));
-
-        setTimeout(() => {
-            const data = image_handler.crop();
-            elements["target"].src = data;
-        }, 2000)
-    };
-
+    image.onload = () => image_handler.set_image(image);
     image.src = "test.jpg";
 }
 
 
 function setPicToManipulate() {
-    var file = elements.myFileInput.files[0];
-    if (file)
-        elements.content.style["background-image"] = `url("${URL.createObjectURL(file)}")`
+    const file = elements.myFileInput.files[0];
+    console.log(file);
+    if (file) {
+        const image = new Image();
+        // This feel unnecessary
+        image.onload = () => image_handler.set_image(image);
+        image.src = URL.createObjectURL(file)
+    }
 }
 
 function sendPic() {
@@ -268,11 +276,16 @@ function drawImageActualSize() {
 }
 
 function capture_img() {
-    console.log("Capturing image")
-    const canvas = drag.getCanvas();
-    var dataURL = canvas.toDataURL();
+    const data = image_handler.crop();
+    elements["target"].src = data;
 
-    elements.ref_img.src = dataURL;
+    image_handler.upload();
+
+    // console.log("Capturing image")
+    // const canvas = drag.getCanvas();
+    // var dataURL = canvas.toDataURL();
+
+    // elements.ref_img.src = dataURL;
 }
 
 
