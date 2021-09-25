@@ -29,6 +29,8 @@ fn read_command<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(cmd: I) -> Option<St
 #[post("/upload", data = "<file>")]
 async fn upload(mut file: TempFile<'_>) -> Option<String> {
     file.persist_to("/tmp/hallo.jpg").await.ok()?;
+
+    println!("Saved file!");
     let cmd = read_command(["tesseract", "/tmp/hallo.jpg", "-", "--psm", "0"])?;
 
     println!("cmd\n{}",cmd);

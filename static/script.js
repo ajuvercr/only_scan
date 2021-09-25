@@ -1,5 +1,6 @@
 
 async function upload_file(file) {
+    console.log(file);
     var xmlHttpRequest = new XMLHttpRequest();
 
     console.log(file);
@@ -58,10 +59,11 @@ class ImageHandler {
         };
     }
 
-    set_image(image, data_url = null) {
+    set_image(image, data_url = null, raw_file = null) {
         if (!data_url) data_url = image_to_data_url(image);
         this.init();
 
+        this.raw_file = raw_file;
         this.data_url = data_url;
         this.image = image;
         this.parent.style["background-image"] = `url("${data_url}")`
@@ -134,7 +136,7 @@ class ImageHandler {
         this.element.style.height = this.pos.height + "px";
     }
 
-    crop() {
+    crop(f = null) {
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
 
@@ -156,15 +158,20 @@ class ImageHandler {
             0, 0, width * zoomWidth, height * zoomHeight
         );
 
-        return canvas.toDataURL();
+        if (f) canvas.toBlob(f)
+        else return canvas.toDataURL();
+
+        // return canvas.toDataURL();
     }
 
     async upload() {
-        if (!this.data_url && this.image) this.data_url = image_to_data_url(this.image);
-        if (!this.data_url) return;
+        if (!this.image) return;
 
-        upload_file(this.image);
+        this.crop(upload_file);
+        // if (!this.data_url && this.image) this.data_url = image_to_data_url(this.image);
+        // if (!this.data_url) return;
 
+        // upload_file(data_url);
     }
 }
 
