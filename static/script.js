@@ -181,11 +181,13 @@ class ImageHandler {
     async upload() {
         if (!this.image) return;
 
-        this.crop(upload_file);
+        // this.crop(upload_file);
         // if (!this.data_url && this.image) this.data_url = image_to_data_url(this.image);
         // if (!this.data_url) return;
 
         // upload_file(data_url);
+
+        return { "Success": [{ "name": "TL ALP DRINK AMAND", "price": 2.99 }, { "name": "800G QUAKER HAVERM |", "price": 2.95 }, { "name": "VUILZAK GROEN 30L", "price": 11.1 }, { "name": "KOMKOMMER", "price": 0.96 }, { "name": "1.6. ICE TEA ZERO", "price": 2.11 }, { "name": "O.5L MONST ENERGY", "price": 1.42 }, { "name": "SOCL MNSTR PARADIS", "price": 1.42 }, { "name": "BLADPETERSELTIE VER", "price": 1.69 }, { "name": "ELVEA TOMATENCONCE |", "price": 2.29 }, { "name": "SOCL MONSTER MU/GT", "price": 1.42 }, { "name": "VOEDING |", "price": 73.99 }, { "name": "PILION FETA 200G", "price": 1.66 }, { "name": "206 DLL KORTANDER \u0014", "price": 0.99 }] }
     }
 }
 
