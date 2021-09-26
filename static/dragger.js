@@ -29,11 +29,11 @@ class Dragger {
         element.addEventListener('touchstart', (e) => {
             this.handleTouch(e, ACTIONS.DOWN)
         })
-        element.addEventListener('mouseup', this.onPointerUp.bind(this))
+        document.addEventListener('mouseup', this.onPointerUp.bind(this))
         element.addEventListener('touchend', (e) => {
             this.handleTouch(e, ACTIONS.UP)
         });
-        element.addEventListener('mousemove', this.onPointerMove.bind(this))
+        document.addEventListener('mousemove', this.onPointerMove.bind(this))
         element.addEventListener('touchmove', (e) => {
             this.handleTouch(e, ACTIONS.MOVE)
         })

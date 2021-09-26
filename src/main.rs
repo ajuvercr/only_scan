@@ -1,10 +1,14 @@
-use rocket::form::{Contextual, Form};
+#[macro_use] extern crate rocket;
+
 use rocket::fs::{NamedFile, TempFile};
+use rocket::sentinel::resolution::DefaultSentinel;
 use std::path::{Path, PathBuf};
 use std::{ffi::OsStr, process::Command};
 
-#[macro_use]
-extern crate rocket;
+use rocket::serde::{Serialize, Deserialize, json::Json};
+
+// use rocket::serde::{Serialize, Deserialize};
+// use rocket::json::Json;
 
 #[derive(FromForm)]
 struct Upload<'f> {
@@ -25,14 +29,12 @@ fn read_command<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(cmd: I) -> Option<St
 //     Redirect::to("static/index.html")
 // }
 
-#[post("/upload", data = "<file>")]
-async fn upload(mut file: TempFile<'_>) -> Option<String> {
+async fn file_to_text(mut file: TempFile<'_>) -> Option<String> {
     file.persist_to("/tmp/hallo.jpg").await.ok()?;
 
     println!("Saved file!");
     let cmd = read_command(["tesseract", "/tmp/hallo.jpg", "-", "--psm", "0"])?;
 
-    println!("cmd\n{}",cmd);
     let mut lines = cmd.lines();
     let rotate = lines
         .find(|x| x.starts_with("Rotate:"))
@@ -51,26 +53,152 @@ async fn upload(mut file: TempFile<'_>) -> Option<String> {
         "/tmp/hallo2.jpg",
     ])?;
 
-    let out = read_command(["tesseract", "/tmp/hallo2.jpg", "-"]);
-    println!("Output {:?}", out);
-    out
+    read_command(["tesseract", "--psm", "6", "/tmp/hallo2.jpg", "-"])
 }
 
-#[post("/upload2", data = "<form>")]
-fn submit(form: Form<Contextual<'_, Upload<'_>>>) {
-    if let Some(ref value) = form.value {
-        // The form parsed successfully. `value` is the `T`.
-        println!("successful!");
+#[post("/upload", data = "<file>")]
+async fn upload(file: TempFile<'_>) -> Json<Results> {
+    if let Some(inner) = file_to_text(file).await.as_ref().map(String::as_str).map(parse_texts) {
+        Json(Results::Success(inner))
+    } else {
+        Json(Results::Error("To baddd".to_string()))
+    }
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub enum Results {
+    Success(Vec<Item>),
+    Error(String),
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct Item {
+    name: String,
+    price: f32,
+}
+
+enum ItemState {
+    Centime,
+    Euro,
+    Name,
+}
+
+pub fn parse_texts(input: &str) -> Vec<Item> {
+    input.lines().filter_map(parse_text).collect()
+}
+
+pub fn parse_text(input: &str) -> Option<Item> {
+    println!("Current {}", input);
+    let mut price: Vec<u8> = Vec::with_capacity(input.len());
+    let mut name: Vec<u8> = Vec::with_capacity(input.len());
+
+
+    let mut doing_price = ItemState::Centime;
+
+    for c in input.chars().rev() {
+        match doing_price {
+            ItemState::Centime => {
+                if c.is_whitespace() {
+                    continue;
+                }
+
+                if c == ',' || c == '.' {
+                    continue;
+                }
+
+                if price.len() >= 2 {
+                    doing_price = ItemState::Euro;
+                }
+
+                if c.is_ascii_digit() {
+                    price.push(c as u8);
+                } else {
+                    eprintln!("{} was unexpected in {}", c, input);
+                    return None;
+                }
+            },
+            ItemState::Euro => {
+                if c.is_whitespace() {
+                    continue;
+                }
+
+                if price.len() == 2 && (c == ',' || c == '.') {
+                    continue;
+                }
+
+                if c.is_ascii_digit() {
+                    price.push(c as u8);
+                } else {
+                    name.push(c as u8);
+                    doing_price = ItemState::Name;
+                }
+            },
+            ItemState::Name => {
+                name.push(c as u8);
+            },
+        }
     }
 
-    // We can retrieve raw field values and errors.
-    let raw_id_value = form.context.field_value("upload");
-
-    println!("raw id value: {:?}", raw_id_value);
-    for e in form.context.field_errors("upload") {
-        println!("id error {:?}", e);
+    if price.len() < 3 {
+        return None;
     }
 
+    price.reverse();
+    name.reverse();
+
+    let price_str = String::from_utf8_lossy(&price);
+
+    Item {
+        name: String::from_utf8_lossy(&name).into(),
+        price: price_str.parse::<f32>().ok()? / 100.0,
+    }.into()
+}
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parsing() {
+        if let Some(item) = parse_text("test 13.20\n") {
+            assert_eq!(item.name, "test");
+            assert_eq!(item.price, 13.2);
+        } else {
+            assert!(false);
+        }
+    }
+
+    #[test]
+    fn test_alpro() {
+        if let Some(item) = parse_text("1L ALP DRINK AMAND 2 29 \n") {
+            assert_eq!(item.name, "1L ALP DRINK AMAND");
+            assert_eq!(item.price, 2.29);
+        } else {
+            assert!(false);
+        }
+    }
+
+    #[test]
+    fn test_vuilzak_groen() {
+        if let Some(item) = parse_text("VUILZAK GROEN 30L - 1110 \n") {
+            assert_eq!(item.name, "VUILZAK GROEN 30L -");
+            assert_eq!(item.price, 11.10);
+        } else {
+            assert!(false);
+        }
+    }
+
+    #[test]
+    fn test_fail_1() {
+        assert_eq!(parse_text("  \n"), None);
+    }
+
+    #[test]
+    fn test_fail_2() {
+        assert_eq!(parse_text("50CL. MNSTR PARADIS 1f42 "), None);
+    }
 }
 
 #[get("/<path..>")]
@@ -85,5 +213,5 @@ pub async fn files(path: PathBuf) -> Option<NamedFile> {
 
 #[launch]
 fn rocket() -> _ {
-    rocket::build().mount("/", routes![upload, submit, files])
+    rocket::build().mount("/", routes![upload, files])
 }
