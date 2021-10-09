@@ -1,9 +1,13 @@
 #[macro_use] extern crate rocket;
+extern crate rocket_dyn_templates;
+
+use rocket_dyn_templates::Template;
 
 use rocket::fs::{NamedFile, TempFile};
 use rocket::sentinel::resolution::DefaultSentinel;
 use std::path::{Path, PathBuf};
 use std::{ffi::OsStr, process::Command};
+
 
 use rocket::serde::{Serialize, Deserialize, json::Json};
 
@@ -64,6 +68,8 @@ async fn upload(file: TempFile<'_>) -> Json<Results> {
         Json(Results::Error("To baddd".to_string()))
     }
 }
+
+
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum Results {
@@ -201,6 +207,22 @@ mod tests {
     }
 }
 
+#[get("/")]
+fn index() -> Template {
+    #[derive(Serialize)]
+    struct IndexContext {
+        firstname: String,
+        lastname: String,
+    }
+
+    let context = IndexContext {
+        firstname: String::from("Arthur"),
+        lastname: String::from("Meeee")
+    };
+
+    Template::render("index", &context)
+}
+
 #[get("/<path..>")]
 pub async fn files(path: PathBuf) -> Option<NamedFile> {
     let mut path = Path::new("static").join(path);
@@ -213,5 +235,5 @@ pub async fn files(path: PathBuf) -> Option<NamedFile> {
 
 #[launch]
 fn rocket() -> _ {
-    rocket::build().mount("/", routes![upload, files])
+    rocket::build().mount("/", routes![index, upload, files]).attach(Template::fairing())
 }
