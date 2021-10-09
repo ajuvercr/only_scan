@@ -1,5 +1,8 @@
-#[macro_use] extern crate rocket;
+#[macro_use]
+extern crate rocket;
 extern crate rocket_dyn_templates;
+
+mod desk;
 
 use rocket_dyn_templates::Template;
 
@@ -8,8 +11,7 @@ use rocket::sentinel::resolution::DefaultSentinel;
 use std::path::{Path, PathBuf};
 use std::{ffi::OsStr, process::Command};
 
-
-use rocket::serde::{Serialize, Deserialize, json::Json};
+use rocket::serde::{json::Json, Deserialize, Serialize};
 
 // use rocket::serde::{Serialize, Deserialize};
 // use rocket::json::Json;
@@ -62,14 +64,17 @@ async fn file_to_text(mut file: TempFile<'_>) -> Option<String> {
 
 #[post("/upload", data = "<file>")]
 async fn upload(file: TempFile<'_>) -> Json<Results> {
-    if let Some(inner) = file_to_text(file).await.as_ref().map(String::as_str).map(parse_texts) {
+    if let Some(inner) = file_to_text(file)
+        .await
+        .as_ref()
+        .map(String::as_str)
+        .map(parse_texts)
+    {
         Json(Results::Success(inner))
     } else {
         Json(Results::Error("To baddd".to_string()))
     }
 }
-
-
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum Results {
@@ -98,7 +103,6 @@ pub fn parse_text(input: &str) -> Option<Item> {
     let mut price: Vec<u8> = Vec::with_capacity(input.len());
     let mut name: Vec<u8> = Vec::with_capacity(input.len());
 
-
     let mut doing_price = ItemState::Centime;
 
     for c in input.chars().rev() {
@@ -122,7 +126,7 @@ pub fn parse_text(input: &str) -> Option<Item> {
                     eprintln!("{} was unexpected in {}", c, input);
                     return None;
                 }
-            },
+            }
             ItemState::Euro => {
                 if c.is_whitespace() {
                     continue;
@@ -138,10 +142,10 @@ pub fn parse_text(input: &str) -> Option<Item> {
                     name.push(c as u8);
                     doing_price = ItemState::Name;
                 }
-            },
+            }
             ItemState::Name => {
                 name.push(c as u8);
-            },
+            }
         }
     }
 
@@ -157,10 +161,9 @@ pub fn parse_text(input: &str) -> Option<Item> {
     Item {
         name: String::from_utf8_lossy(&name).into(),
         price: price_str.parse::<f32>().ok()? / 100.0,
-    }.into()
+    }
+    .into()
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -217,7 +220,7 @@ fn index() -> Template {
 
     let context = IndexContext {
         firstname: String::from("Arthur"),
-        lastname: String::from("Meeee")
+        lastname: String::from("Meeee"),
     };
 
     Template::render("index", &context)
@@ -235,5 +238,8 @@ pub async fn files(path: PathBuf) -> Option<NamedFile> {
 
 #[launch]
 fn rocket() -> _ {
-    rocket::build().mount("/", routes![index, upload, files]).attach(Template::fairing())
+    let rocket = rocket::build().mount("/", routes![index, upload, files]);
+    let rocket = desk::fuel(rocket);
+
+    rocket.attach(Template::fairing())
 }

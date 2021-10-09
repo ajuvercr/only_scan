@@ -7,6 +7,16 @@
     <title>Document</title>
 </head>
 <body>
-    <p>{{firstname}} {{lastname}}</p>
+    <p>Hej</p>
+
+    {{#each this}}
+    <button onclick="go_brr( {{ this.0 }} )">{{this.1}}</button>
+    {{/each}}
+
+    <script>
+        function go_brr(amount) {
+            fetch("/desk/" + amount,  { method: 'POST' });
+        }
+    </script>
 </body>
 </html>
