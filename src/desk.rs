@@ -8,6 +8,8 @@ use rocket::futures::future::BoxFuture;
 use rocket::response::Redirect;
 use rocket::serde::json::serde_json;
 use rocket::serde::{Deserialize, Serialize};
+use rocket::tokio::io::AsyncWriteExt;
+use rocket::tokio::net::TcpStream;
 use rocket::{Build, Orbit, Request, Response, Rocket, State};
 use rocket_dyn_templates::Template;
 use std::fs;
@@ -36,13 +38,25 @@ where
 struct DeskConfigConfig {
     #[serde(default = "default_location")]
     config_location: String,
+    #[serde(default = "default_desk_server_ip")]
+    desk_server_ip: String,
+    #[serde(default = "default_desk_server_port")]
+    desk_server_port: u16,
 }
 
 fn default_location() -> String {
     "desk_config.json".to_string()
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+fn default_desk_server_ip() -> String {
+    "127.0.0.1".into()
+}
+
+fn default_desk_server_port() -> u16 {
+    9123
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
 struct DeskStand {
     id: uuid::Uuid,
     name: String,
@@ -97,7 +111,10 @@ fn configure_desk<'a>(rocket: &'a Rocket<Orbit>) -> BoxFuture<'a, ()> {
     Box::pin(async move {
         println!("Rocket launch config: {:?}", rocket.config());
 
-        if let Some(DeskConfigConfig { config_location }) = rocket.state::<DeskConfigConfig>() {
+        if let Some(DeskConfigConfig {
+            config_location, ..
+        }) = rocket.state::<DeskConfigConfig>()
+        {
             let config = initial_read_state(config_location)
                 .await
                 .expect("Something failed");
@@ -157,14 +174,44 @@ fn new_desk(input: Form<NewDesk>, desks: &State<DeskConfigState>) -> Redirect {
 }
 
 #[post("/<uuid>")]
-fn post(uuid: &str, desks: &State<DeskConfigState>) -> () {
-    let d = get_mutexed(desks);
-    let uuid = uuid::Uuid::parse_str(uuid).unwrap();
-    println!("Posting {}", uuid);
+async fn post(
+    uuid: &str,
+    desks: &State<DeskConfigState>,
+    config: &State<DeskConfigConfig>,
+) -> Option<()> {
+    #[derive(Serialize)]
+    struct DeskAction {
+        move_to: bool,
+        move_to_raw: i32,
+    }
 
-    if let Some(desk) = d.stands.iter().find(|x| x.id == uuid) {
+    let optional_desk = {
+        let d = get_mutexed(desks);
+        let uuid = uuid::Uuid::parse_str(uuid).unwrap();
+        println!("Posting {}", uuid);
+        d.stands.iter().find(|x| x.id == uuid).cloned()
+    };
+
+    if let Some(desk) = optional_desk {
+        let config = config.inner();
+
+        let mut stream =
+            TcpStream::connect((config.desk_server_ip.as_str(), config.desk_server_port))
+                .await
+                .ok()?;
+
+        let action = DeskAction {
+            move_to: true,
+            move_to_raw: desk.amount,
+        };
+
+        let bytes = serde_json::to_vec(&action).ok()?;
+        stream.write_all(&bytes).await.ok()?;
+
         println!("Found {:?}", desk);
     }
+
+    Some(())
 }
 
 #[get("/<uuid>/delete")]
