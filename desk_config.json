@@ -1,0 +1,37 @@
+[
+  {
+    "id": "a9aded15-dcde-4bb2-94d2-188bb48cf491",
+    "name": "Nicky is cool",
+    "amount": 1500
+  },
+  {
+    "id": "4088bdf3-7e66-4ee6-8168-1e731864cca8",
+    "name": "current",
+    "amount": 1091
+  },
+  {
+    "id": "6182deca-e136-462f-bffa-a4b0a08df2ba",
+    "name": "testing",
+    "amount": 1000
+  },
+  {
+    "id": "076e0ac1-bd3e-438d-a9f1-a34326161180",
+    "name": "beast",
+    "amount": 666
+  },
+  {
+    "id": "42df8b9f-eecc-46d8-ba52-42d703da67c5",
+    "name": "test 222",
+    "amount": 500
+  },
+  {
+    "id": "8a5eb94c-57b3-463e-a913-6d64277c710d",
+    "name": "test",
+    "amount": 444
+  },
+  {
+    "id": "63aacd17-7ad1-4d37-b991-5d9bf80c444c",
+    "name": "test",
+    "amount": 342
+  }
+]
