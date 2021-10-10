@@ -182,7 +182,6 @@ a {
   text-align: center;
   color: black;
   font-weight: bolder;
-  pointer-events:none
 }
 
 .desk a:before {

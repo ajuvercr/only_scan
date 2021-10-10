@@ -2,7 +2,7 @@
 
 <div class="desks">
 {{#each desks}}
-    <div class="desk option" onclick="go_brr( '{{ this.id }}' )">
+    <div class="desk option" onclick="go_brr( $event, '{{ this.id }}' )">
         <span>{{this.name}}: {{this.amount}}</span>
         <a href="/desk/{{this.id}}/delete"></a>
     </div>
@@ -28,8 +28,10 @@
 
 
 <script>
-    function go_brr(id) {
-        fetch("/desk/" + id,  { method: 'POST' });
+    function go_brr(event, id) {
+        if (event.target === event.currentTarget) {
+            fetch("/desk/" + id,  { method: 'POST' });
+        }
     }
 </script>
 
