@@ -1,24 +1,26 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-</head>
-<body>
-    <p>Hej</p>
+{{#*inline "page"}}
 
-    {{#each this}}
-    <p>
-        <button onclick="go_brr( {{ this.0 }} )">{{this.1}}</button>
-    </p>
-    {{/each}}
+<div class="tiles">
+    <a class="tile" href="/desk">
+        Desk
+    </a>
+    <a class="tile" href="/">
+        Somewhere else
+    </a>
+    <a class="tile" href="/">
+        Somewhere else
+    </a>
+    <a class="tile" href="/">
+        Somewhere else
+    </a>
+    <a class="tile" href="/">
+        Somewhere else
+    </a>
+    <a class="tile" href="/">
+        Somewhere else
+    </a>
+</div>
 
-    <script>
-        function go_brr(amount) {
-            fetch("/desk/" + amount,  { method: 'POST' });
-        }
-    </script>
-</body>
-</html>
+{{/inline}}
+
+{{> base}}
