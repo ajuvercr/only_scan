@@ -3,6 +3,7 @@ extern crate rocket;
 extern crate rocket_dyn_templates;
 
 mod desk;
+pub mod sorted_list;
 
 use rocket_dyn_templates::Template;
 
