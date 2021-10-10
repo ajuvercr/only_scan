@@ -10,7 +10,9 @@
     <p>Hej</p>
 
     {{#each this}}
-    <button onclick="go_brr( {{ this.0 }} )">{{this.1}}</button>
+    <p>
+        <button onclick="go_brr( {{ this.0 }} )">{{this.1}}</button>
+    </p>
     {{/each}}
 
     <script>

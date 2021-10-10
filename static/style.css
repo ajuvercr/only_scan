@@ -1,5 +1,4 @@
-html,
-body {
+html, body {
   height: 100%;
   margin: 0;
   overflow: hidden;
@@ -74,4 +73,61 @@ body:not(.lc_mousedrag_is_mobile) #inner {
   bottom: 0;
   left: 0;
   transform: translate(-50%, 50%);
+}
+
+.desks {
+  width: max-content;
+  margin-top: 40px;
+}
+
+.desk {
+  min-width: 200px;
+  width: max-content;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  width: 100%;
+}
+
+.option:hover {
+  cursor: pointer;
+  background-color: #bbb;
+}
+
+.desk a {
+  width: 30px;
+  height: 30px;
+  display: table;
+  text-decoration: none;
+  text-align: center;
+  color: black;
+  font-weight: bolder;
+}
+
+.desk a:before {
+  display: table-cell;
+  font-size: 2em;
+  text-align: center;
+  vertical-align: middle;
+  display: inline-block;
+  content: "\00d7";
+}
+
+.desk a:hover {
+  background-color: orange;
+}
+
+.form .desk:hover {
+  background-color: unset;
+}
+
+.desk .button {
+  padding: 10px;
+  width: 100%;
+}
+
+.form {
+  margin-top: 50px;
+  width: 100%;
 }

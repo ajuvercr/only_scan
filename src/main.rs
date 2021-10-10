@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate rocket;
 extern crate rocket_dyn_templates;
+extern crate uuid;
 
 mod desk;
 pub mod sorted_list;
@@ -8,7 +9,6 @@ pub mod sorted_list;
 use rocket_dyn_templates::Template;
 
 use rocket::fs::{NamedFile, TempFile};
-use rocket::sentinel::resolution::DefaultSentinel;
 use std::path::{Path, PathBuf};
 use std::{ffi::OsStr, process::Command};
 

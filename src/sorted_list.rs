@@ -1,8 +1,16 @@
+use std::cmp::Ordering;
+use std::fmt;
 use std::ops::{Deref, DerefMut};
 
 pub struct SortedList<E> {
     inner: Vec<E>,
-    cmp_f: Box<dyn Fn(&E, &E) -> bool>,
+    cmp_f: Box<dyn Fn(&E, &E) -> bool + Send + Sync + 'static>,
+}
+
+impl<E: fmt::Debug> fmt::Debug for SortedList<E> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.inner, f)
+    }
 }
 
 impl<E> SortedList<E>
@@ -26,7 +34,7 @@ where
 impl<E> SortedList<E> {
     pub fn new_with_cmp<F>(cmp: F) -> Self
     where
-        F: Fn(&E, &E) -> bool + 'static,
+        F: Fn(&E, &E) -> bool + Send + Sync + 'static,
     {
         let cmp = Box::new(cmp);
         Self {
@@ -38,7 +46,7 @@ impl<E> SortedList<E> {
     pub fn new_on_field<F, T>(get_field: F) -> Self
     where
         T: PartialOrd + 'static,
-        F: Fn(&E) -> T + 'static,
+        F: Fn(&E) -> T + Send + Sync + 'static,
     {
         let cmp = Box::new(move |o1: &E, o2: &E| get_field(o1) < get_field(o2));
 
@@ -52,7 +60,7 @@ impl<E> SortedList<E> {
         let mut min = 0;
         let mut max = self.inner.len();
 
-        while (min != max) {
+        while min != max {
             let index = (min + max) / 2;
 
             if (self.cmp_f)(&el, &self.inner[index]) {
@@ -67,6 +75,22 @@ impl<E> SortedList<E> {
 
         self.inner.insert(min, el);
         return min;
+    }
+
+    pub fn with_inner(mut self, mut inner: Vec<E>) -> Self {
+        let cmp_f = |o1: &E, o2: &E| {
+            if (self.cmp_f)(o1, o2) {
+                Ordering::Less
+            } else if (self.cmp_f)(o2, o1) {
+                Ordering::Greater
+            } else {
+                Ordering::Equal
+            }
+        };
+        inner.sort_unstable_by(cmp_f);
+        self.inner = inner;
+
+        self
     }
 }
 
@@ -158,10 +182,10 @@ mod test {
         assert_eq!(list.inner, vec![6, 3, 2, 1, 1, 0]);
     }
 
-
     #[test]
     fn test_four_on_field_insert() {
-        let mut list: SortedList<(usize, usize)> = SortedList::new_on_field(|x: &(usize, usize)| x.1);
+        let mut list: SortedList<(usize, usize)> =
+            SortedList::new_on_field(|x: &(usize, usize)| x.1);
         list.insert((0, 2));
         list.insert((1, 1));
         list.insert((0, 3));
@@ -169,6 +193,9 @@ mod test {
         list.insert((0, 0));
         list.insert((4, 6));
         assert_eq!(list.len(), 6);
-        assert_eq!(list.inner, vec![(0 ,0), (1 ,1), (1 ,1), (0 ,2), (0 ,3), (4 ,6)]);
+        assert_eq!(
+            list.inner,
+            vec![(0, 0), (1, 1), (1, 1), (0, 2), (0, 3), (4, 6)]
+        );
     }
 }

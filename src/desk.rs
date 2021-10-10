@@ -1,14 +1,18 @@
-use std::collections::BTreeMap;
+use std::borrow::Borrow;
 use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Mutex};
 
 use rocket::fairing::AdHoc;
+use rocket::form::Form;
 use rocket::futures::future::BoxFuture;
+use rocket::response::Redirect;
 use rocket::serde::json::serde_json;
 use rocket::serde::{Deserialize, Serialize};
-use rocket::tokio::fs;
-use rocket::{Build, Orbit, Rocket, State};
+use rocket::{Build, Orbit, Request, Response, Rocket, State};
 use rocket_dyn_templates::Template;
+use std::fs;
+
+use super::sorted_list::SortedList;
 
 fn get_mutexed_rocket<'a, T>(rocket: &'a Rocket<Orbit>) -> impl DerefMut<Target = T> + 'a
 where
@@ -38,17 +42,38 @@ fn default_location() -> String {
     "desk_config.json".to_string()
 }
 
-#[derive(Deserialize, Serialize, PartialEq, Debug)]
+#[derive(Deserialize, Serialize, Debug)]
+struct DeskStand {
+    id: uuid::Uuid,
+    name: String,
+    amount: i32,
+}
+
+impl DeskStand {
+    fn new(name: &str, amount: i32) -> Self {
+        Self {
+            name: name.into(),
+            amount,
+            id: uuid::Uuid::new_v4(),
+        }
+    }
+
+    fn sorted_list() -> SortedList<DeskStand> {
+        SortedList::new_on_field(|x: &DeskStand| -x.amount)
+    }
+}
+
+#[derive(Debug)]
 struct DeskConfig {
-    stands: BTreeMap<u32, String>,
+    stands: SortedList<DeskStand>,
     location: String,
 }
-type DeskConfigState = Arc<Mutex<DeskConfig>>;
 
+type DeskConfigState = Arc<Mutex<DeskConfig>>;
 impl Default for DeskConfig {
     fn default() -> Self {
         DeskConfig {
-            stands: BTreeMap::new(),
+            stands: DeskStand::sorted_list(),
             location: String::from("Desk.toml"),
         }
     }
@@ -57,14 +82,14 @@ impl Default for DeskConfig {
 impl DeskConfig {
     fn new(path: &str) -> Self {
         Self {
-            stands: BTreeMap::new(),
+            stands: DeskStand::sorted_list(),
             location: path.to_string(),
         }
     }
 
-    async fn save(&self) -> Option<()> {
-        let vec = serde_json::to_vec_pretty(&self.stands).ok()?;
-        fs::write(&self.location, &vec).await.ok()
+    fn save(&self) -> Option<()> {
+        let vec = serde_json::to_vec_pretty(&self.stands.deref()).ok()?;
+        fs::write(&self.location, &vec).ok()
     }
 }
 
@@ -87,22 +112,23 @@ async fn read_file<T>(loc: &str) -> Option<T>
 where
     T: for<'de> Deserialize<'de>,
 {
-    let content = fs::read_to_string(loc).await.ok()?;
+    let content = fs::read_to_string(loc).ok()?;
 
     serde_json::from_str(&content).ok()
 }
 
 async fn initial_read_state(location: &str) -> Option<DeskConfig> {
-    match read_file::<BTreeMap<u32, String>>(location).await {
+    match read_file::<Vec<DeskStand>>(location).await {
         Some(stands) => Some(DeskConfig {
-            stands,
+            stands: DeskStand::sorted_list().with_inner(stands),
             location: location.into(),
         }),
         None => {
             let mut out = DeskConfig::new(location);
-            out.stands.insert(401, "epic place".into());
 
-            out.save().await?;
+            out.stands.insert(DeskStand::new("epic place", 401));
+
+            out.save()?;
             Some(out)
         }
     }
@@ -112,32 +138,49 @@ async fn initial_read_state(location: &str) -> Option<DeskConfig> {
 fn get(desks: &State<DeskConfigState>) -> Template {
     let d = get_mutexed(desks);
 
-    let desks: Vec<_> = d.stands.iter().collect();
-
-    // #[derive(Serialize)]
-    // struct IndexContext {
-    //     firstname: String,
-    //     lastname: String,
-    // }
-
-    // let context = IndexContext {
-    //     firstname: String::from("Arthur"),
-    //     lastname: String::from("Meeee"),
-    // };
-
-    Template::render("index", &desks)
+    let desks: &Vec<DeskStand> = d.stands.borrow();
+    Template::render("desk", desks)
 }
 
-#[post("/<amount>")]
-fn post(amount: u32) -> () {
-    println!("Posting {}", amount);
+#[derive(FromForm)]
+struct NewDesk {
+    name: String,
+    amount: i32,
 }
 
+#[post("/new", data = "<input>")]
+fn new_desk(input: Form<NewDesk>, desks: &State<DeskConfigState>) -> Redirect {
+    let mut d = get_mutexed(desks);
+    d.stands.insert(DeskStand::new(&input.name, input.amount));
+    d.save().unwrap();
+    Redirect::to("/desk")
+}
+
+#[post("/<uuid>")]
+fn post(uuid: &str, desks: &State<DeskConfigState>) -> () {
+    let d = get_mutexed(desks);
+    let uuid = uuid::Uuid::parse_str(uuid).unwrap();
+    println!("Posting {}", uuid);
+
+    if let Some(desk) = d.stands.iter().find(|x| x.id == uuid) {
+        println!("Found {:?}", desk);
+    }
+}
+
+#[get("/<uuid>/delete")]
+fn delete(uuid: &str, desks: &State<DeskConfigState>) -> Redirect {
+    let mut desks = get_mutexed(desks);
+    let uuid = uuid::Uuid::parse_str(uuid).unwrap();
+    desks.stands.retain(|x| x.id != uuid);
+    desks.save().unwrap();
+
+    Redirect::to("/desk")
+}
 
 pub fn fuel(rocket: Rocket<Build>) -> Rocket<Build> {
     rocket
         .manage(Arc::new(Mutex::new(DeskConfig::default())))
-        .mount("/desk", routes![get, post])
+        .mount("/desk", routes![get, post, new_desk, delete])
         .attach(AdHoc::on_liftoff("configure desk", configure_desk))
         .attach(AdHoc::config::<DeskConfigConfig>())
 }

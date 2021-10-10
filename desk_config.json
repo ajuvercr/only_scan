@@ -1,4 +1,22 @@
-{
-    "402": "epic place 2",
-  "400": "epic place"
-}
+[
+  {
+    "id": "076e0ac1-bd3e-438d-a9f1-a34326161180",
+    "name": "beast",
+    "amount": 666
+  },
+  {
+    "id": "42df8b9f-eecc-46d8-ba52-42d703da67c5",
+    "name": "test 222",
+    "amount": 500
+  },
+  {
+    "id": "8a5eb94c-57b3-463e-a913-6d64277c710d",
+    "name": "test",
+    "amount": 444
+  },
+  {
+    "id": "63aacd17-7ad1-4d37-b991-5d9bf80c444c",
+    "name": "test",
+    "amount": 342
+  }
+]
