@@ -1,7 +1,7 @@
 {{#*inline "page"}}
 
 <div class="desks">
-{{#each this}}
+{{#each desks}}
     <div class="desk option" onclick="go_brr( '{{ this.id }}' )">
         <span>{{this.name}}: {{this.amount}}</span>
         <a href="/desk/{{this.id}}/delete"></a>
@@ -17,7 +17,7 @@
             <div class="desk" >
 
             <label for="amount">Amount:</label>
-            <input type="number" id="amount" name="amount">
+            <input type="number" id="amount" name="amount" placeholder="Leave blank for current height">
         </div>
         <div class="desk">
             <input class="button" type="submit" value="Submit">

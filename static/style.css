@@ -9,6 +9,11 @@ body:not(.lc_mousedrag_is_mobile) #inner {
   cursor: grab;
 }
 
+.error {
+  padding: 20px;
+  background-color: rgba(255, 40, 40, 0.7);
+}
+
 .content {
   background-position: center;
   background-size: contain;

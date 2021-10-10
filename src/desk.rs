@@ -6,13 +6,29 @@ use rocket::fairing::AdHoc;
 use rocket::form::Form;
 use rocket::futures::future::BoxFuture;
 use rocket::response::Redirect;
-use rocket::serde::json::serde_json;
+// use rocket::serde::json::json;
+use rocket::serde::json::serde_json::{self, json};
 use rocket::serde::{Deserialize, Serialize};
-use rocket::tokio::io::AsyncWriteExt;
+use rocket::tokio::io::{AsyncReadExt, AsyncWriteExt};
 use rocket::tokio::net::TcpStream;
-use rocket::{Build, Orbit, Request, Response, Rocket, State};
+use rocket::{Build, Orbit, Rocket, State};
 use rocket_dyn_templates::Template;
 use std::fs;
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct Error {
+    header: String,
+    body: String,
+}
+
+impl Error {
+    pub fn new(header: &str, body: &str) -> Self {
+        Error {
+            header: header.into(),
+            body: body.into(),
+        }
+    }
+}
 
 use super::sorted_list::SortedList;
 
@@ -151,26 +167,82 @@ async fn initial_read_state(location: &str) -> Option<DeskConfig> {
     }
 }
 
+async fn exec_command<T: Serialize>(command: T, config: &DeskConfigConfig) -> Option<String> {
+    let mut stream = TcpStream::connect((config.desk_server_ip.as_str(), config.desk_server_port))
+        .await
+        .ok()?;
+
+    let mut bytes = serde_json::to_vec(&command).ok()?;
+    bytes.push(b'\n');
+    stream.write_all(&bytes).await.ok()?;
+    stream.flush().await.ok()?;
+
+    let mut out = String::new();
+    stream.read_to_string(&mut out).await.ok()?;
+
+    Some(out)
+}
+
 #[get("/")]
 fn get(desks: &State<DeskConfigState>) -> Template {
     let d = get_mutexed(desks);
 
     let desks: &Vec<DeskStand> = d.stands.borrow();
-    Template::render("desk", desks)
+
+    let context = json!({
+        "desks": desks,
+        "errors": []
+    });
+
+    Template::render("desk", &context)
 }
 
 #[derive(FromForm)]
 struct NewDesk {
     name: String,
-    amount: i32,
+    amount: Option<i32>,
+}
+
+async fn try_get_current_height(config: &DeskConfigConfig) -> Option<i32> {
+    let out = exec_command(json!({}), config).await?;
+    out
+        .lines()
+        .filter(|x| x.starts_with("Height:"))
+        .map(|x| x.trim_matches(|c: char| !c.is_ascii_digit()))
+        .filter_map(|x| x.parse::<i32>().ok())
+        .next()
 }
 
 #[post("/new", data = "<input>")]
-fn new_desk(input: Form<NewDesk>, desks: &State<DeskConfigState>) -> Redirect {
+async fn new_desk(
+    input: Form<NewDesk>,
+    desks: &State<DeskConfigState>,
+    config: &State<DeskConfigConfig>,
+) -> Result<Redirect, Template> {
+    let amount = if let Some(amount) = input.amount {
+        amount.into()
+    } else {
+        try_get_current_height(config.inner()).await
+    };
+
     let mut d = get_mutexed(desks);
-    d.stands.insert(DeskStand::new(&input.name, input.amount));
-    d.save().unwrap();
-    Redirect::to("/desk")
+    match amount {
+        Some(amount) => {
+            d.stands.insert(DeskStand::new(&input.name, amount));
+            d.save().unwrap();
+            Ok(Redirect::to("/desk"))
+        },
+        _ => {
+            let desks: &Vec<DeskStand> = d.stands.borrow();
+
+            let context = json!({
+                "desks": desks,
+                "errors": [Error::new("Something failed", "Could not determine current height, please provide a value.")]
+            });
+
+            Err(Template::render("desk", &context))
+        },
+    }
 }
 
 #[post("/<uuid>")]
@@ -188,27 +260,16 @@ async fn post(
     let optional_desk = {
         let d = get_mutexed(desks);
         let uuid = uuid::Uuid::parse_str(uuid).unwrap();
-        println!("Posting {}", uuid);
         d.stands.iter().find(|x| x.id == uuid).cloned()
     };
 
     if let Some(desk) = optional_desk {
-        let config = config.inner();
-
-        let mut stream =
-            TcpStream::connect((config.desk_server_ip.as_str(), config.desk_server_port))
-                .await
-                .ok()?;
-
         let action = DeskAction {
             move_to: true,
             move_to_raw: desk.amount,
         };
 
-        let bytes = serde_json::to_vec(&action).ok()?;
-        stream.write_all(&bytes).await.ok()?;
-
-        println!("Found {:?}", desk);
+        exec_command(action, config.inner()).await?;
     }
 
     Some(())

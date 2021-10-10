@@ -10,6 +10,13 @@
 <body>
     <h1>Hej</h1>
 
+{{#each errors}}
+<div class="error">
+    <h3>{{this.header}}</h3>
+    <p>{{this.body}}</p>
+</div>
+{{/each}}
+
     {{> page}}
 </body>
 </html>
