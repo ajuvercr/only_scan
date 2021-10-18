@@ -43,6 +43,7 @@ impl Options {
     /// `Options` representing the empty set. No dotfiles or index pages are
     /// rendered. This is different than [`Options::default()`](#impl-Default),
     /// which enables `Index`.
+    #[allow(dead_code)]
     pub const None: Options = Options(0b0000);
 
     /// `Options` enabling responding to requests for a directory with the
@@ -179,101 +180,12 @@ impl StaticFiles {
     /// The default rank use by `StaticFiles` routes.
     const DEFAULT_RANK: isize = 10;
 
-    /// Constructs a new `StaticFiles` that serves files from the file system
-    /// `path`. By default, [`Options::Index`] is set, and the generated routes
-    /// have a rank of `10`. To serve static files with other options, use
-    /// [`StaticFiles::new()`]. To choose a different rank for generated routes,
-    /// use [`StaticFiles::rank()`].
-    ///
-    /// # Example
-    ///
-    /// Serve the static files in the `/www/public` local directory on path
-    /// `/static`.
-    ///
-    /// ```rust
-    /// # extern crate rocket;
-    /// # extern crate rocket_contrib;
-    /// use rocket_contrib::serve::StaticFiles;
-    ///
-    /// fn main() {
-    /// # if false {
-    ///     rocket::ignite()
-    ///         .mount("/static", StaticFiles::from("/www/public"))
-    ///         .launch();
-    /// # }
-    /// }
-    /// ```
-    ///
-    /// Exactly as before, but set the rank for generated routes to `30`.
-    ///
-    /// ```rust
-    /// # extern crate rocket;
-    /// # extern crate rocket_contrib;
-    /// use rocket_contrib::serve::StaticFiles;
-    ///
-    /// fn main() {
-    /// # if false {
-    ///     rocket::ignite()
-    ///         .mount("/static", StaticFiles::from("/www/public").rank(30))
-    ///         .launch();
-    /// # }
-    /// }
-    /// ```
-    pub fn from<P: AsRef<Path>>(path: P) -> Self {
-        StaticFiles::new(path, Options::default())
-    }
-
-    /// Constructs a new `StaticFiles` that serves files from the file system
-    /// `path` with `options` enabled. By default, the handler's routes have a
-    /// rank of `10`. To choose a different rank, use [`StaticFiles::rank()`].
-    ///
-    /// # Example
-    ///
-    /// Serve the static files in the `/www/public` local directory on path
-    /// `/static` without serving index files or dot files. Additionally, serve
-    /// the same files on `/pub` with a route rank of -1 while also serving
-    /// index files and dot files.
-    ///
-    /// ```rust
-    /// # extern crate rocket;
-    /// # extern crate rocket_contrib;
-    /// use rocket_contrib::serve::{StaticFiles, Options};
-    ///
-    /// fn main() {
-    /// # if false {
-    ///     let options = Options::Index | Options::DotFiles;
-    ///     rocket::ignite()
-    ///         .mount("/static", StaticFiles::from("/www/public"))
-    ///         .mount("/pub", StaticFiles::new("/www/public", options).rank(-1))
-    ///         .launch();
-    /// # }
-    /// }
-    /// ```
     pub fn new<P: AsRef<Path>>(path: P, options: Options) -> Self {
         StaticFiles {
             root: path.as_ref().into(),
             options,
             rank: Self::DEFAULT_RANK,
         }
-    }
-
-    /// Sets the rank for generated routes to `rank`.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # extern crate rocket_contrib;
-    /// use rocket_contrib::serve::{StaticFiles, Options};
-    ///
-    /// // A `StaticFiles` created with `from()` with routes of rank `3`.
-    /// StaticFiles::from("/public").rank(3);
-    ///
-    /// // A `StaticFiles` created with `new()` with routes of rank `-15`.
-    /// StaticFiles::new("/public", Options::Index).rank(-15);
-    /// ```
-    pub fn rank(mut self, rank: isize) -> Self {
-        self.rank = rank;
-        self
     }
 }
 

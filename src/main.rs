@@ -2,6 +2,7 @@
 extern crate rocket;
 extern crate rocket_dyn_templates;
 extern crate uuid;
+extern crate chrono;
 
 mod desk;
 mod scan;

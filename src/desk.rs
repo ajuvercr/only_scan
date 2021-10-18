@@ -94,13 +94,11 @@ impl DeskConfig {
 
 fn configure_desk<'a>(rocket: &'a Rocket<Orbit>) -> BoxFuture<'a, ()> {
     Box::pin(async move {
-        println!("Rocket launch config: {:?}", rocket.config());
-
         if let Some(DeskConfigConfig {
-            config_location, ..
+            desk_config_location, ..
         }) = rocket.state::<DeskConfigConfig>()
         {
-            let config = initial_read_state(config_location)
+            let config = initial_read_state(desk_config_location)
                 .await
                 .expect("Something failed");
 
