@@ -4,23 +4,22 @@ extern crate rocket_dyn_templates;
 extern crate uuid;
 
 mod desk;
+mod scan;
+mod serve;
+pub mod util;
 pub mod sorted_list;
 
-use rocket_dyn_templates::Template;
 
+#[cfg(test)]
+mod tests;
+
+use rocket::Route;
 use rocket::fs::{NamedFile, TempFile};
+use rocket_dyn_templates::Template;
 use std::path::{Path, PathBuf};
 use std::{ffi::OsStr, process::Command};
 
 use rocket::serde::{json::Json, Deserialize, Serialize};
-
-// use rocket::serde::{Serialize, Deserialize};
-// use rocket::json::Json;
-
-#[derive(FromForm)]
-struct Upload<'f> {
-    upload: TempFile<'f>,
-}
 
 fn read_command<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(cmd: I) -> Option<String> {
     let mut cmd_parts = cmd.into_iter();
@@ -166,50 +165,6 @@ pub fn parse_text(input: &str) -> Option<Item> {
     .into()
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_parsing() {
-        if let Some(item) = parse_text("test 13.20\n") {
-            assert_eq!(item.name, "test");
-            assert_eq!(item.price, 13.2);
-        } else {
-            assert!(false);
-        }
-    }
-
-    #[test]
-    fn test_alpro() {
-        if let Some(item) = parse_text("1L ALP DRINK AMAND 2 29 \n") {
-            assert_eq!(item.name, "1L ALP DRINK AMAND");
-            assert_eq!(item.price, 2.29);
-        } else {
-            assert!(false);
-        }
-    }
-
-    #[test]
-    fn test_vuilzak_groen() {
-        if let Some(item) = parse_text("VUILZAK GROEN 30L - 1110 \n") {
-            assert_eq!(item.name, "VUILZAK GROEN 30L -");
-            assert_eq!(item.price, 11.10);
-        } else {
-            assert!(false);
-        }
-    }
-
-    #[test]
-    fn test_fail_1() {
-        assert_eq!(parse_text("  \n"), None);
-    }
-
-    #[test]
-    fn test_fail_2() {
-        assert_eq!(parse_text("50CL. MNSTR PARADIS 1f42 "), None);
-    }
-}
 
 #[get("/")]
 fn index() -> Template {
@@ -227,7 +182,7 @@ fn index() -> Template {
     Template::render("index", &context)
 }
 
-#[get("/<path..>")]
+#[get("/<path..>", rank = 10)]
 pub async fn files(path: PathBuf) -> Option<NamedFile> {
     let mut path = Path::new("static").join(path);
     if path.is_dir() {
@@ -237,10 +192,17 @@ pub async fn files(path: PathBuf) -> Option<NamedFile> {
     NamedFile::open(path).await.ok()
 }
 
+
 #[launch]
 fn rocket() -> _ {
-    let rocket = rocket::build().mount("/", routes![index, upload, files]);
+    let statics: Vec<Route> = serve::StaticFiles::new("static", serve::Options::DotFiles).into();
+
+    let rocket = rocket::build()
+        .mount("/", routes![index, upload])
+        .mount("/", statics);
     let rocket = desk::fuel(rocket);
+    let rocket = scan::fuel(rocket);
 
     rocket.attach(Template::fairing())
 }
+// StaticFiles::from("/static")

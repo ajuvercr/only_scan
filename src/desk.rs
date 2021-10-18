@@ -1,5 +1,5 @@
 use std::borrow::Borrow;
-use std::ops::{Deref, DerefMut};
+use std::ops::{Deref};
 use std::sync::{Arc, Mutex};
 
 use rocket::fairing::AdHoc;
@@ -15,50 +15,19 @@ use rocket::{Build, Orbit, Rocket, State};
 use rocket_dyn_templates::Template;
 use std::fs;
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct Error {
-    header: String,
-    body: String,
-}
-
-impl Error {
-    pub fn new(header: &str, body: &str) -> Self {
-        Error {
-            header: header.into(),
-            body: body.into(),
-        }
-    }
-}
-
-use super::sorted_list::SortedList;
-
-fn get_mutexed_rocket<'a, T>(rocket: &'a Rocket<Orbit>) -> impl DerefMut<Target = T> + 'a
-where
-    T: Sync + Send + 'static,
-{
-    rocket
-        .state::<Arc<Mutex<T>>>()
-        .expect("No state found!")
-        .lock()
-        .expect("Failed unlock rocket state")
-}
-
-fn get_mutexed<'a, T>(state: &'a State<Arc<Mutex<T>>>) -> impl DerefMut<Target = T> + 'a
-where
-    T: Sync + Send + 'static,
-{
-    state.inner().lock().expect("Failed unlock rocket state")
-}
+use crate::sorted_list::SortedList;
+use crate::util::*;
 
 #[derive(Deserialize, Debug)]
 struct DeskConfigConfig {
     #[serde(default = "default_location")]
-    config_location: String,
+    desk_config_location: String,
     #[serde(default = "default_desk_server_ip")]
     desk_server_ip: String,
     #[serde(default = "default_desk_server_port")]
     desk_server_port: u16,
 }
+
 
 fn default_location() -> String {
     "desk_config.json".to_string()
@@ -139,15 +108,6 @@ fn configure_desk<'a>(rocket: &'a Rocket<Orbit>) -> BoxFuture<'a, ()> {
             *desk_config = config;
         }
     })
-}
-
-async fn read_file<T>(loc: &str) -> Option<T>
-where
-    T: for<'de> Deserialize<'de>,
-{
-    let content = fs::read_to_string(loc).ok()?;
-
-    serde_json::from_str(&content).ok()
 }
 
 async fn initial_read_state(location: &str) -> Option<DeskConfig> {
