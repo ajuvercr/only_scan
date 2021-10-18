@@ -1,0 +1,48 @@
+{{#*inline "headers"}}
+    <title>New | Scan | Only_Scan</title>
+    <link rel="stylesheet" href="/scan.css">
+    <script src="/dragger.js"></script>
+    <script src="/cropper.js"></script>
+{{/inline}}
+
+{{#*inline "page"}}
+
+    <div class="main">
+        <div class="content" id="content">
+            <div class="handles" id="handles">
+                <div class="handle" id="handle0"></div>
+                <div class="handle" id="handle1"></div>
+                <div class="handle" id="handle2"></div>
+                <div class="handle" id="handle3"></div>
+            </div>
+        </div>
+        <div class="bottom">
+            <div class="bottom-item">
+                <input id="myFileInput" type="file" accept="image/*;capture=camera">
+            </div>
+            <div class="bottom-item">
+                <button onclick="capture_img()">
+                    Continue!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- <image id="target"/> -->
+    <!-- <canvas id="canvas"></canvas>
+    <canvas id="canvas2"></canvas>
+
+    <button onclick="capture_img()">Capture image!</button>
+    Whatup my boys.
+
+    <p id="textbox"></p>
+
+    <button onclick="setPicToManipulate()">Force try!</button>
+
+
+    <img id="ref_img"/> -->
+    <script src="script.js"></script>
+
+{{/inline}}
+
+{{> base}}

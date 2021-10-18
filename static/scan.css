@@ -1,0 +1,16 @@
+.scan_list {
+    margin: auto;
+    width: max-content;
+    min-width: 40vw;
+    margin-top: 40px;
+}
+
+.new_button {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.option + .option {
+    margin-top: 20px;
+}

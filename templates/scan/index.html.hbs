@@ -1,0 +1,24 @@
+{{#*inline "headers"}}
+    <title>Scan | Only_Scan</title>
+    <link rel="stylesheet" href="/scan.css">
+{{/inline}}
+
+{{#*inline "page"}}
+
+    <div class="scan_list">
+        <div class="new_button">
+            <h3>Create new scan!</h3>
+            <a href="/scan/new">click here!</a>
+        </div>
+
+        {{#each scans}}
+        <div class="scan option">
+            Scan option!
+        </div>
+        {{/each}}
+    </div>
+
+
+{{/inline}}
+
+{{> base}}
