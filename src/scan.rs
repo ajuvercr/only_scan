@@ -11,7 +11,7 @@ use rocket::{Build, Orbit, Rocket};
 use rocket_dyn_templates::Template;
 use std::fs;
 
-use chrono::DateTime;
+use chrono::prelude::*;
 
 use crate::sorted_list::SortedList;
 use crate::util::*;
@@ -19,8 +19,9 @@ use crate::util::*;
 #[derive(Deserialize, Serialize, Debug, Clone)]
 struct Scan {
     id: uuid::Uuid,
-    date: DateTime<chrono::Utc>,
+    date: DateTime<Local>,
 }
+
 
 impl Scan {
     fn sorted_list() -> SortedList<Scan> {

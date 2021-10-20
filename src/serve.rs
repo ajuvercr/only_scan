@@ -110,65 +110,6 @@ impl ::std::ops::BitOr for Options {
     }
 }
 
-/// Custom handler for serving static files.
-///
-/// This handler makes it simple to serve static files from a directory on the
-/// local file system. To use it, construct a `StaticFiles` using either
-/// [`StaticFiles::from()`] or [`StaticFiles::new()`] then simply `mount` the
-/// handler at a desired path. When mounted, the handler will generate route(s)
-/// that serve the desired static files.
-///
-/// # Options
-///
-/// The handler's functionality can be customized by passing an [`Options`] to
-/// [`StaticFiles::new()`]. Additionally, the rank of generate routes, which
-/// defaults to `10`, can be set via the [`StaticFiles::rank()`] builder method.
-///
-/// # Example
-///
-/// To serve files from the `/static` directory at the `/public` path, allowing
-/// `index.html` files to be used to respond to requests for a directory (the
-/// default), you might write the following:
-///
-/// ```rust
-/// # extern crate rocket;
-/// # extern crate rocket_contrib;
-/// use rocket_contrib::serve::StaticFiles;
-///
-/// fn main() {
-/// # if false {
-///     rocket::ignite()
-///         .mount("/public", StaticFiles::from("/static"))
-///         .launch();
-/// # }
-/// }
-/// ```
-///
-/// With this set-up, requests for files at `/public/<path..>` will be handled
-/// by returning the contents of `/static/<path..>`. Requests for _directories_
-/// at `/public/<directory>` will be handled by returning the contents of
-/// `/static/<directory>/index.html`.
-///
-/// If your static files are stored relative to your crate and your project is
-/// managed by Cargo, you should either use a relative path and ensure that your
-/// server is started in the crate's root directory or use the
-/// `CARGO_MANIFEST_DIR` to create an absolute path relative to your crate root.
-/// For example, to serve files in the `static` subdirectory of your crate at
-/// `/`, you might write:
-///
-/// ```rust
-/// # extern crate rocket;
-/// # extern crate rocket_contrib;
-/// use rocket_contrib::serve::StaticFiles;
-///
-/// fn main() {
-/// # if false {
-///     rocket::ignite()
-///         .mount("/", StaticFiles::from(concat!(env!("CARGO_MANIFEST_DIR"), "/static")))
-///         .launch();
-/// # }
-/// }
-/// ```
 #[derive(Clone)]
 pub struct StaticFiles {
     root: PathBuf,
