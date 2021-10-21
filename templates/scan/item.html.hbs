@@ -1,0 +1,32 @@
+{{#*inline "headers"}}
+<title>Scan | Only_Scan</title>
+<link rel="stylesheet" href="/scan.css">
+{{/inline}}
+
+{{#*inline "page"}}
+
+<form action="#" method="POST">
+    <input id="name" name="name" type="text" value="{{item.name}}">
+    <input id="price" name="price" type="number" value="{{item.price}}">
+
+    <div>
+        <input type="radio" id="huey" name="category" value="huey" checked>
+        <label for="huey">Huey</label>
+    </div>
+
+    <div>
+        <input type="radio" id="dewey" name="category" value="dewey">
+        <label for="dewey">Dewey</label>
+    </div>
+
+    <div>
+        <input type="radio" id="louie" name="category" value="louie">
+        <label for="louie">Louie</label>
+    </div>
+
+    <button type="submit">Submit</button>
+</form>
+
+{{/inline}}
+
+{{> base}}

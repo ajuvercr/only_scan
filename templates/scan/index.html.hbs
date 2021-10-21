@@ -11,11 +11,15 @@
             <a href="/scan/new">click here!</a>
         </div>
 
-        {{#each scans}}
-        <div class="scan option">
-            Scan option!
-        </div>
-        {{/each}}
+        <ul>
+            {{#each scans}}
+            <li>
+                <a href="/scan/{{this.id}}">
+                    Scan {{this.date}} ({{this.done}} / {{this.total}})
+                </a>
+            </li>
+            {{/each}}
+        </ul>
     </div>
 
 

@@ -24,7 +24,8 @@ use crate::util::*;
 #[derive(FromForm)]
 struct CategoriseForm<'r> {
     category: &'r str,
-    scan_id: &'r str,
+    name: &'r str,
+    price: f32,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -76,15 +77,26 @@ impl Scan {
             .collect()
     }
 
+    fn is_done(&self) -> bool {
+        !self.items.iter().any(|x| x.needs_categorised())
+    }
+
+    fn get_first<'a>(&'a self) -> Option<&'a ScanItem> {
+        self.items.iter().filter(|x| x.needs_categorised()).next()
+    }
+
     fn count_done(&self) -> (usize, usize) {
         let done = self.items.iter().filter(|x| !x.needs_categorised()).count();
         (done, self.items.len())
     }
 
-    fn categorise(&mut self, uuid: &str, category: &str) {
+    fn categorise(&mut self, uuid: &str, name: &str, price: f32, category: &str) {
         let uuid = uuid::Uuid::parse_str(uuid).unwrap();
         if let Some(item) = self.items.iter_mut().filter(|x| x.id == uuid).next() {
-            item.categorise(category);
+            println!("got some scan item thing");
+            item.category = Some(category.to_string());
+            item.name = name.to_string();
+            item.price = price;
         }
     }
 }
@@ -109,10 +121,6 @@ impl ScanItem {
 
     fn needs_categorised(&self) -> bool {
         self.category.is_none()
-    }
-
-    fn categorise(&mut self, category: &str) {
-        self.category = Some(category.to_string());
     }
 }
 
@@ -191,9 +199,19 @@ async fn initial_read_state(location: &str) -> Option<ScanConfig> {
 fn get(scans: &State<ScanConfigState>) -> Template {
     let mut scans = get_mutexed(scans);
 
+    let scans: Vec<_> = scans.scans.iter().map(
+        |scan| {
+            json!({
+                "date": scan.date.format("%d/%m/%C").to_string(),
+                "done": scan.count_done().0,
+                "total": scan.count_done().1,
+                "id": scan.id,
+            })
+        }).collect();
+
     let context = json!({
         "errors": [],
-        "scans": scans.scans,
+        "scans": scans,
     });
 
     Template::render("scan/index", &context)
@@ -213,39 +231,104 @@ fn new_post() -> Redirect {
     Redirect::to("/scan")
 }
 
-#[get("/<uuid>")]
-fn get_one(uuid: &str, scans: &State<ScanConfigState>) -> Template {
-    let mut scans = get_mutexed(scans);
-    let uuid = uuid::Uuid::parse_str(uuid).unwrap();
+macro_rules! get_foo {
+    (item mut $state:expr, $item_id:expr) => {
+        $state
+            .items
+            .iter_mut()
+            .filter(|x| x.id == $item_id)
+            .next()?
+    };
+    (item $state:expr, $item_id:expr) => {
+        $state.items.iter().filter(|x| x.id == $item_id).next()?
+    };
+    (scan mut $state:expr, $scan_id:expr) => {
+        $state
+            .scans
+            .iter_mut()
+            .filter(|x| x.id == $scan_id)
+            .next()?
+    };
+    (scan $state:expr, $scan_id:expr) => {
+        $state.scans.iter().filter(|x| x.id == $scan_id).next()?
+    };
+    (state $state:expr) => {
+        get_mutexed($state)
+    };
+}
+
+#[get("/<uuid_str>")]
+fn get_scan(uuid_str: &str, scans: &State<ScanConfigState>) -> Option<Result<Template, Redirect>> {
+    let uuid = uuid::Uuid::parse_str(uuid_str).unwrap();
+    let state = get_foo!(state scans);
+    let scan = get_foo!(scan state, uuid);
+
+    if let Some(item) = scan.get_first() {
+        Err(Redirect::to(uri!("/scan", get_one(uuid_str, item.id.to_string())))).into()
+    } else {
+        let context = json!({
+            "errors": [],
+        });
+
+        Ok(Template::render("scan/one", &context)).into()
+    }
+}
+
+#[get("/<scan_id_str>/<item_id_str>")]
+fn get_one(
+    scan_id_str: &str,
+    item_id_str: &str,
+    scans: &State<ScanConfigState>,
+) -> Option<Template> {
+    let scan_id = uuid::Uuid::parse_str(scan_id_str).ok()?;
+    let item_id = uuid::Uuid::parse_str(item_id_str).ok()?;
+    let state = get_foo!(state scans);
+    let scan = get_foo!(scan state, scan_id);
+    let item = get_foo!(item scan, item_id);
 
     let context = json!({
         "errors": [],
-        "scan": scans.scans.iter().filter(|x| x.id == uuid).next(),
+        "item": {
+            "name": item.name,
+            "price": item.price,
+        }
     });
 
-    Template::render("scan/one", &context)
+    Template::render("scan/item", &context).into()
 }
 
-#[post("/<uuid>", data = "<user_input>")]
+#[post("/<scan_id_str>/<item_id_str>", data = "<user_input>")]
 fn post_one(
-    uuid: &str,
+    scan_id_str: &str,
+    item_id_str: &str,
     user_input: Form<CategoriseForm<'_>>,
     scans: &State<ScanConfigState>,
 ) -> Redirect {
-    let mut scans = get_mutexed(scans);
-    let uuid = uuid::Uuid::parse_str(uuid).unwrap();
+    let scan_id = uuid::Uuid::parse_str(scan_id_str).unwrap();
+    // let item_id = uuid::Uuid::parse_str(item_id_str).unwrap();
 
-    if let Some(scan) = scans.scans.iter_mut().filter(|x| x.id == uuid).next() {
-        scan.categorise(user_input.scan_id, user_input.category);
+    let mut scans = get_mutexed(scans);
+
+    if let Some(scan) = scans.scans.iter_mut().filter(|x| x.id == scan_id).next() {
+        println!("Got some scan");
+        scan.categorise(
+            item_id_str,
+            user_input.name,
+            user_input.price,
+            user_input.category,
+        );
     }
 
-    Redirect::to(format!("/scan/{}", uuid))
+    Redirect::to(format!("/scan/{}", scan_id_str))
 }
 
 pub fn fuel(rocket: Rocket<Build>) -> Rocket<Build> {
     rocket
         .manage(Arc::new(Mutex::new(ScanConfig::default())))
-        .mount("/scan", routes![get, new_get, new_post, get_one, post_one])
+        .mount(
+            "/scan",
+            routes![get, new_get, new_post, get_scan, get_one, post_one],
+        )
         .attach(AdHoc::on_liftoff("configure desk", configure_desk))
         .attach(AdHoc::config::<ScanConfigConfig>())
 }
