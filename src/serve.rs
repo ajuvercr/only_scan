@@ -145,7 +145,12 @@ impl Into<Vec<Route>> for StaticFiles {
     }
 }
 
-async fn handle_dir<'r>(opt: Options, r: &'r Request<'_>, d: Data<'r>, path: &Path) -> rocket::route::Outcome<'r> {
+async fn handle_dir<'r>(
+    opt: Options,
+    r: &'r Request<'_>,
+    d: Data<'r>,
+    path: &Path,
+) -> rocket::route::Outcome<'r> {
     if opt.contains(Options::NormalizeDirs) && !r.uri().path().ends_with('/') {
         let new_path = r
             .uri()

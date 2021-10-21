@@ -1,21 +1,21 @@
 #[macro_use]
 extern crate rocket;
+extern crate chrono;
+extern crate rand;
 extern crate rocket_dyn_templates;
 extern crate uuid;
-extern crate chrono;
 
 mod desk;
 mod scan;
 mod serve;
-pub mod util;
 pub mod sorted_list;
-
+pub mod util;
 
 #[cfg(test)]
 mod tests;
 
-use rocket::Route;
 use rocket::fs::{NamedFile, TempFile};
+use rocket::Route;
 use rocket_dyn_templates::Template;
 use std::path::{Path, PathBuf};
 use std::{ffi::OsStr, process::Command};
@@ -166,7 +166,6 @@ pub fn parse_text(input: &str) -> Option<Item> {
     .into()
 }
 
-
 #[get("/")]
 fn index() -> Template {
     #[derive(Serialize)]
@@ -192,7 +191,6 @@ pub async fn files(path: PathBuf) -> Option<NamedFile> {
 
     NamedFile::open(path).await.ok()
 }
-
 
 #[launch]
 fn rocket() -> _ {

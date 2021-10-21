@@ -1,5 +1,5 @@
 use std::borrow::Borrow;
-use std::ops::{Deref};
+use std::ops::Deref;
 use std::sync::{Arc, Mutex};
 
 use rocket::fairing::AdHoc;
@@ -27,7 +27,6 @@ struct DeskConfigConfig {
     #[serde(default = "default_desk_server_port")]
     desk_server_port: u16,
 }
-
 
 fn default_location() -> String {
     "desk_config.json".to_string()
@@ -95,7 +94,8 @@ impl DeskConfig {
 fn configure_desk<'a>(rocket: &'a Rocket<Orbit>) -> BoxFuture<'a, ()> {
     Box::pin(async move {
         if let Some(DeskConfigConfig {
-            desk_config_location, ..
+            desk_config_location,
+            ..
         }) = rocket.state::<DeskConfigConfig>()
         {
             let config = initial_read_state(desk_config_location)
@@ -163,8 +163,7 @@ struct NewDesk {
 
 async fn try_get_current_height(config: &DeskConfigConfig) -> Option<i32> {
     let out = exec_command(json!({}), config).await?;
-    out
-        .lines()
+    out.lines()
         .filter(|x| x.starts_with("Height:"))
         .map(|x| x.trim_matches(|c: char| !c.is_ascii_digit()))
         .filter_map(|x| x.parse::<i32>().ok())
@@ -189,7 +188,7 @@ async fn new_desk(
             d.stands.insert(DeskStand::new(&input.name, amount));
             d.save().unwrap();
             Ok(Redirect::to("/desk"))
-        },
+        }
         _ => {
             let desks: &Vec<DeskStand> = d.stands.borrow();
 
@@ -199,7 +198,7 @@ async fn new_desk(
             });
 
             Err(Template::render("desk", &context))
-        },
+        }
     }
 }
 
