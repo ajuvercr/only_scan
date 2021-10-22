@@ -1,25 +1,19 @@
-use std::ops::Deref;
-use std::sync::{Arc, Mutex};
-
 use rocket::fairing::AdHoc;
-use rocket::futures::future::BoxFuture;
 use rocket::response::Redirect;
-// use rocket::serde::json::json;
 use rocket::form::Form;
-use rocket::serde::json::serde_json::{self, json};
+use rocket::serde::json::serde_json::json;
 use rocket::serde::{Deserialize, Serialize};
 use rocket::State;
-use rocket::{Build, Orbit, Rocket};
+use rocket::{Build, Rocket};
 use rocket_dyn_templates::Template;
-use std::fs;
 
-use rand::distributions::{Alphanumeric, Standard, Uniform};
+use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 
 use chrono::prelude::*;
 
+use crate::repository::Repository;
 use crate::sorted_list::SortedList;
-use crate::util::*;
 
 #[derive(FromForm)]
 struct CategoriseForm<'r> {
@@ -28,6 +22,7 @@ struct CategoriseForm<'r> {
     price: f32,
 }
 
+type Scans = Repository<Vec<Scan>>;
 #[derive(Deserialize, Serialize, Debug, Clone)]
 struct Scan {
     id: uuid::Uuid,
@@ -124,35 +119,6 @@ impl ScanItem {
     }
 }
 
-struct ScanConfig {
-    scans: Vec<Scan>,
-    location: String,
-}
-
-type ScanConfigState = Arc<Mutex<ScanConfig>>;
-impl Default for ScanConfig {
-    fn default() -> Self {
-        ScanConfig {
-            scans: Vec::new(),
-            location: String::from("Desk.toml"),
-        }
-    }
-}
-
-impl ScanConfig {
-    fn new(path: &str) -> Self {
-        Self {
-            scans: vec![Scan::new_with(1), Scan::new_with(5)],
-            location: path.to_string(),
-        }
-    }
-
-    fn save(&self) -> Option<()> {
-        let vec = serde_json::to_vec_pretty(&self.scans.deref()).ok()?;
-        fs::write(&self.location, &vec).ok()
-    }
-}
-
 #[derive(Deserialize, Debug)]
 struct ScanConfigConfig {
     #[serde(default = "default_location")]
@@ -163,58 +129,28 @@ fn default_location() -> String {
     "scan_config.json".to_string()
 }
 
-fn configure_desk<'a>(rocket: &'a Rocket<Orbit>) -> BoxFuture<'a, ()> {
-    Box::pin(async move {
-        if let Some(ScanConfigConfig {
-            scan_config_location,
-            ..
-        }) = rocket.state::<ScanConfigConfig>()
-        {
-            let config = initial_read_state(scan_config_location)
-                .await
-                .expect("Something failed");
-
-            let mut desk_config = get_mutexed_rocket::<ScanConfig>(&rocket);
-            *desk_config = config;
-        }
-    })
-}
-
-async fn initial_read_state(location: &str) -> Option<ScanConfig> {
-    match read_file::<Vec<Scan>>(location).await {
-        Some(scans) => Some(ScanConfig {
-            scans,
-            location: location.into(),
-        }),
-        None => {
-            let out = ScanConfig::new(location);
-
-            out.save()?;
-            Some(out)
-        }
-    }
-}
-
 #[get("/")]
-fn get(scans: &State<ScanConfigState>) -> Template {
-    let mut scans = get_mutexed(scans);
-
-    let scans: Vec<_> = scans.scans.iter().map(
-        |scan| {
-            json!({
-                "date": scan.date.format("%d/%m/%C").to_string(),
-                "done": scan.count_done().0,
-                "total": scan.count_done().1,
-                "id": scan.id,
+fn get(scans: &State<Scans>) -> Template {
+    scans.with(|scans| {
+        let scans: Vec<_> = scans
+            .iter()
+            .map(|scan| {
+                json!({
+                    "date": scan.date.format("%d/%m/%C").to_string(),
+                    "done": scan.count_done().0,
+                    "total": scan.count_done().1,
+                    "id": scan.id,
+                })
             })
-        }).collect();
+            .collect();
 
-    let context = json!({
-        "errors": [],
-        "scans": scans,
-    });
+        let context = json!({
+            "errors": [],
+            "scans": scans,
+        });
 
-    Template::render("scan/index", &context)
+        Template::render("scan/index", &context)
+    })
 }
 
 #[get("/new")]
@@ -250,7 +186,7 @@ macro_rules! get_foo {
             .next()?
     };
     (scan $state:expr, $scan_id:expr) => {
-        $state.scans.iter().filter(|x| x.id == $scan_id).next()?
+        $state.iter().filter(|x| x.id == $scan_id).next()?
     };
     (state $state:expr) => {
         get_mutexed($state)
@@ -258,43 +194,46 @@ macro_rules! get_foo {
 }
 
 #[get("/<uuid_str>")]
-fn get_scan(uuid_str: &str, scans: &State<ScanConfigState>) -> Option<Result<Template, Redirect>> {
-    let uuid = uuid::Uuid::parse_str(uuid_str).unwrap();
-    let state = get_foo!(state scans);
-    let scan = get_foo!(scan state, uuid);
+fn get_scan(uuid_str: &str, scans: &State<Scans>) -> Option<Result<Template, Redirect>> {
+    scans.with(|state| {
+        let uuid = uuid::Uuid::parse_str(uuid_str).unwrap();
+        let scan = get_foo!(scan state, uuid);
 
-    if let Some(item) = scan.get_first() {
-        Err(Redirect::to(uri!("/scan", get_one(uuid_str, item.id.to_string())))).into()
-    } else {
-        let context = json!({
-            "errors": [],
-        });
+        if let Some(item) = scan.get_first() {
+            Err(Redirect::to(uri!(
+                "/scan",
+                get_one(uuid_str, item.id.to_string())
+            )))
+            .into()
+        } else {
+            let context = json!({
+                "errors": [],
+            });
 
-        Ok(Template::render("scan/one", &context)).into()
-    }
+            Ok(Template::render("scan/one", &context)).into()
+        }
+    })
 }
 
 #[get("/<scan_id_str>/<item_id_str>")]
-fn get_one(
-    scan_id_str: &str,
-    item_id_str: &str,
-    scans: &State<ScanConfigState>,
-) -> Option<Template> {
+fn get_one(scan_id_str: &str, item_id_str: &str, scans: &State<Scans>) -> Option<Template> {
     let scan_id = uuid::Uuid::parse_str(scan_id_str).ok()?;
     let item_id = uuid::Uuid::parse_str(item_id_str).ok()?;
-    let state = get_foo!(state scans);
-    let scan = get_foo!(scan state, scan_id);
-    let item = get_foo!(item scan, item_id);
 
-    let context = json!({
-        "errors": [],
-        "item": {
-            "name": item.name,
-            "price": item.price,
-        }
-    });
+    scans.with(|state| {
+        let scan = get_foo!(scan state, scan_id);
+        let item = get_foo!(item scan, item_id);
 
-    Template::render("scan/item", &context).into()
+        let context = json!({
+            "errors": [],
+            "item": {
+                "name": item.name,
+                "price": item.price,
+            }
+        });
+
+        Template::render("scan/item", &context).into()
+    })
 }
 
 #[post("/<scan_id_str>/<item_id_str>", data = "<user_input>")]
@@ -302,33 +241,36 @@ fn post_one(
     scan_id_str: &str,
     item_id_str: &str,
     user_input: Form<CategoriseForm<'_>>,
-    scans: &State<ScanConfigState>,
+    scans: &State<Scans>,
 ) -> Redirect {
     let scan_id = uuid::Uuid::parse_str(scan_id_str).unwrap();
     // let item_id = uuid::Uuid::parse_str(item_id_str).unwrap();
 
-    let mut scans = get_mutexed(scans);
+    scans.with_save(|scans| {
+        if let Some(scan) = scans.iter_mut().filter(|x| x.id == scan_id).next() {
+            println!("Got some scan");
+            scan.categorise(
+                item_id_str,
+                user_input.name,
+                user_input.price,
+                user_input.category,
+            );
+        }
 
-    if let Some(scan) = scans.scans.iter_mut().filter(|x| x.id == scan_id).next() {
-        println!("Got some scan");
-        scan.categorise(
-            item_id_str,
-            user_input.name,
-            user_input.price,
-            user_input.category,
-        );
-    }
-
-    Redirect::to(format!("/scan/{}", scan_id_str))
+        Redirect::to(format!("/scan/{}", scan_id_str))
+    })
 }
 
 pub fn fuel(rocket: Rocket<Build>) -> Rocket<Build> {
     rocket
-        .manage(Arc::new(Mutex::new(ScanConfig::default())))
         .mount(
             "/scan",
             routes![get, new_get, new_post, get_scan, get_one, post_one],
         )
-        .attach(AdHoc::on_liftoff("configure desk", configure_desk))
         .attach(AdHoc::config::<ScanConfigConfig>())
+        .attach(Repository::<Vec<Scan>>::adhoc(
+            "scans config",
+            |c: &ScanConfigConfig| c.scan_config_location.to_string(),
+            vec![Scan::new_with(2), Scan::new_with(5)],
+        ))
 }
