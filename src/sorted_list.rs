@@ -171,7 +171,7 @@ mod test {
 
     #[test]
     fn test_four_inv_insert() {
-        let mut list: SortedList<usize> = SortedList::new_with_cmp((|x, y| y < x));
+        let mut list: SortedList<usize> = SortedList::new_with_cmp(|x, y| y < x);
         list.insert(2);
         list.insert(1);
         list.insert(3);

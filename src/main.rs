@@ -10,6 +10,7 @@ mod scan;
 mod serve;
 pub mod sorted_list;
 pub mod util;
+pub mod repository;
 
 #[cfg(test)]
 mod tests;

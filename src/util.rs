@@ -47,23 +47,3 @@ where
 
     serde_json::from_str(&content).ok()
 }
-
-// pub fn create_configurator<A, B, C, F>(
-//     func: F,
-// ) -> impl for<'b> Fn(&'b Rocket<Orbit>) -> BoxFuture<'b, ()>
-// where
-//     B: Send + Sync + 'static,
-//     C: Future<Output = B> + Send + Sync + 'static,
-//     F: FnMut(&A) -> C + Send + Sync + 'static,
-//     A: Send + Sync + 'static,
-// {
-//     move |rocket| {
-//         let f = &func;
-//         Box::pin(async move {
-//             let ff = &f;
-//             if let Some(state) = rocket.state::<A>() {
-//                 let foo = ff(state).await;
-//             }
-//         })
-//     }
-// }

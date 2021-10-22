@@ -1,21 +1,17 @@
-use std::borrow::Borrow;
-use std::ops::Deref;
-use std::sync::{Arc, Mutex};
+use std::cmp::Ordering;
+
 
 use rocket::fairing::AdHoc;
 use rocket::form::Form;
-use rocket::futures::future::BoxFuture;
 use rocket::response::Redirect;
-// use rocket::serde::json::json;
 use rocket::serde::json::serde_json::{self, json};
 use rocket::serde::{Deserialize, Serialize};
 use rocket::tokio::io::{AsyncReadExt, AsyncWriteExt};
 use rocket::tokio::net::TcpStream;
-use rocket::{Build, Orbit, Rocket, State};
+use rocket::{Build, Rocket, State};
 use rocket_dyn_templates::Template;
-use std::fs;
 
-use crate::sorted_list::SortedList;
+use crate::repository::Repository;
 use crate::util::*;
 
 #[derive(Deserialize, Debug)]
@@ -40,7 +36,7 @@ fn default_desk_server_port() -> u16 {
     9123
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 struct DeskStand {
     id: uuid::Uuid,
     name: String,
@@ -55,75 +51,20 @@ impl DeskStand {
             id: uuid::Uuid::new_v4(),
         }
     }
+}
 
-    fn sorted_list() -> SortedList<DeskStand> {
-        SortedList::new_on_field(|x: &DeskStand| -x.amount)
+impl PartialOrd for DeskStand {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
-#[derive(Debug)]
-struct DeskConfig {
-    stands: SortedList<DeskStand>,
-    location: String,
-}
-
-type DeskConfigState = Arc<Mutex<DeskConfig>>;
-impl Default for DeskConfig {
-    fn default() -> Self {
-        DeskConfig {
-            stands: DeskStand::sorted_list(),
-            location: String::from("Desk.toml"),
-        }
+impl Ord for DeskStand {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.amount.cmp(&other.amount)
     }
 }
-
-impl DeskConfig {
-    fn new(path: &str) -> Self {
-        Self {
-            stands: DeskStand::sorted_list(),
-            location: path.to_string(),
-        }
-    }
-
-    fn save(&self) -> Option<()> {
-        let vec = serde_json::to_vec_pretty(&self.stands.deref()).ok()?;
-        fs::write(&self.location, &vec).ok()
-    }
-}
-
-fn configure_desk<'a>(rocket: &'a Rocket<Orbit>) -> BoxFuture<'a, ()> {
-    Box::pin(async move {
-        if let Some(DeskConfigConfig {
-            desk_config_location,
-            ..
-        }) = rocket.state::<DeskConfigConfig>()
-        {
-            let config = initial_read_state(desk_config_location)
-                .await
-                .expect("Something failed");
-
-            let mut desk_config = get_mutexed_rocket::<DeskConfig>(&rocket);
-            *desk_config = config;
-        }
-    })
-}
-
-async fn initial_read_state(location: &str) -> Option<DeskConfig> {
-    match read_file::<Vec<DeskStand>>(location).await {
-        Some(stands) => Some(DeskConfig {
-            stands: DeskStand::sorted_list().with_inner(stands),
-            location: location.into(),
-        }),
-        None => {
-            let mut out = DeskConfig::new(location);
-
-            out.stands.insert(DeskStand::new("epic place", 401));
-
-            out.save()?;
-            Some(out)
-        }
-    }
-}
+type Desks = Repository<Vec<DeskStand>>;
 
 async fn exec_command<T: Serialize>(command: T, config: &DeskConfigConfig) -> Option<String> {
     let mut stream = TcpStream::connect((config.desk_server_ip.as_str(), config.desk_server_port))
@@ -142,17 +83,15 @@ async fn exec_command<T: Serialize>(command: T, config: &DeskConfigConfig) -> Op
 }
 
 #[get("/")]
-fn get(desks: &State<DeskConfigState>) -> Template {
-    let d = get_mutexed(desks);
-
-    let desks: &Vec<DeskStand> = d.stands.borrow();
-
-    let context = json!({
-        "desks": desks,
-        "errors": []
-    });
-
-    Template::render("desk", &context)
+fn get(desks: &State<Desks>) -> Template {
+    desks
+        .with( |desks| {
+            let context = json!({
+                "desks": desks,
+                "errors": []
+            });
+            Template::render("desk", &context)
+        })
 }
 
 #[derive(FromForm)]
@@ -173,7 +112,7 @@ async fn try_get_current_height(config: &DeskConfigConfig) -> Option<i32> {
 #[post("/new", data = "<input>")]
 async fn new_desk(
     input: Form<NewDesk>,
-    desks: &State<DeskConfigState>,
+    desks: &State<Desks>,
     config: &State<DeskConfigConfig>,
 ) -> Result<Redirect, Template> {
     let amount = if let Some(amount) = input.amount {
@@ -182,30 +121,31 @@ async fn new_desk(
         try_get_current_height(config.inner()).await
     };
 
-    let mut d = get_mutexed(desks);
-    match amount {
-        Some(amount) => {
-            d.stands.insert(DeskStand::new(&input.name, amount));
-            d.save().unwrap();
-            Ok(Redirect::to("/desk"))
-        }
-        _ => {
-            let desks: &Vec<DeskStand> = d.stands.borrow();
+    desks.with_save(
+        |d| {
+            match amount {
+                Some(amount) => {
+                    d.push(DeskStand::new(&input.name, amount));
+                    d.sort();
+                    Ok(Redirect::to("/desk"))
+                }
+                _ => {
+                    let context = json!({
+                        "desks": d,
+                        "errors": [Error::new("Something failed", "Could not determine current height, please provide a value.")]
+                    });
 
-            let context = json!({
-                "desks": desks,
-                "errors": [Error::new("Something failed", "Could not determine current height, please provide a value.")]
-            });
-
-            Err(Template::render("desk", &context))
+                    Err(Template::render("desk", &context))
+                }
+            }
         }
-    }
+    )
 }
 
 #[post("/<uuid>")]
 async fn post(
     uuid: &str,
-    desks: &State<DeskConfigState>,
+    desks: &State<Desks>,
     config: &State<DeskConfigConfig>,
 ) -> Option<()> {
     #[derive(Serialize)]
@@ -214,11 +154,10 @@ async fn post(
         move_to_raw: i32,
     }
 
-    let optional_desk = {
-        let d = get_mutexed(desks);
+    let optional_desk = desks.with(|d| {
         let uuid = uuid::Uuid::parse_str(uuid).unwrap();
-        d.stands.iter().find(|x| x.id == uuid).cloned()
-    };
+        d.iter().find(|x| x.id == uuid).cloned()
+    });
 
     if let Some(desk) = optional_desk {
         let action = DeskAction {
@@ -233,19 +172,22 @@ async fn post(
 }
 
 #[get("/<uuid>/delete")]
-fn delete(uuid: &str, desks: &State<DeskConfigState>) -> Redirect {
-    let mut desks = get_mutexed(desks);
-    let uuid = uuid::Uuid::parse_str(uuid).unwrap();
-    desks.stands.retain(|x| x.id != uuid);
-    desks.save().unwrap();
+fn delete(uuid: &str, desks: &State<Desks>) -> Redirect {
+    desks.with_save(|desks| {
+        let uuid = uuid::Uuid::parse_str(uuid).unwrap();
+        desks.retain(|x| x.id != uuid);
 
-    Redirect::to("/desk")
+        Redirect::to("/desk")
+    })
 }
 
 pub fn fuel(rocket: Rocket<Build>) -> Rocket<Build> {
     rocket
-        .manage(Arc::new(Mutex::new(DeskConfig::default())))
         .mount("/desk", routes![get, post, new_desk, delete])
-        .attach(AdHoc::on_liftoff("configure desk", configure_desk))
         .attach(AdHoc::config::<DeskConfigConfig>())
+        .attach(Repository::<Vec<DeskStand>>::adhoc(
+            "desk config",
+            |c: &DeskConfigConfig| c.desk_config_location.to_string(),
+            Vec::new(),
+        ))
 }
