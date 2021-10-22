@@ -249,54 +249,15 @@ function setPicToManipulate() {
     }
 }
 
-// const image = new Image(); // Using optional size for image
-// image.onload = drawImageActualSize; // Draw when image has loaded
 
-// // Load an image of intrinsic size 300x227 in CSS pixels
-// image.src = 'test.jpg';
-
-// function drawImageActualSize() {
-//     // Use the intrinsic size of image in CSS pixels for the canvas element
-//     const w = this.naturalWidth;
-//     const h = this.naturalHeight;
-
-//     const aspect = w / h;
-
-
-//     drag = dragger((ctx, width, height, zoom, offsetx, offsety) => {
-//         if (ctx instanceof CanvasRenderingContext2D) {
-//             if (width < height * aspect) {
-//                 ctx.drawImage(this, 0, 0, width, width / aspect)
-//             } else {
-//                 ctx.drawImage(this, 0, 0, height * aspect, height)
-//             }
-//         }
-//     });
-
-//     drag.start();
-
-//     crop = cropper(elements.canvas2, this);
-
-//     crop.start();
-// }
-
-function capture_img() {
+async function capture_img() {
     // const data = image_handler.crop();
     // elements["target"].src = data;
 
-    image_handler.upload();
+    const {Success: result} = await image_handler.upload();
+    console.log(result);
 
-    // console.log("Capturing image")
-    // const canvas = drag.getCanvas();
-    // var dataURL = canvas.toDataURL();
-
-    // elements.ref_img.src = dataURL;
 }
 
 
 window.addEventListener('load', main);
-
-// elements.ref_img.addEventListener('load', e => {
-//     drag.force_draw()
-//     // ctx.drawImage(image, 33, 71, 104, 124, 21, 20, 87, 104);
-// });
