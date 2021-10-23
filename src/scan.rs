@@ -1,6 +1,6 @@
 use rocket::fairing::AdHoc;
-use rocket::response::Redirect;
 use rocket::form::Form;
+use rocket::response::Redirect;
 use rocket::serde::json::serde_json::json;
 use rocket::serde::{Deserialize, Serialize};
 use rocket::State;
@@ -15,6 +15,68 @@ use chrono::prelude::*;
 use crate::repository::Repository;
 use crate::sorted_list::SortedList;
 
+macro_rules! get_foo {
+    (item mut $state:expr, $item_id:expr) => {
+        $state
+            .items
+            .iter_mut()
+            .filter(|x| x.id == $item_id)
+            .next()?
+    };
+    (item $state:expr, $item_id:expr) => {
+        $state.items.iter().filter(|x| x.id == $item_id).next()?
+    };
+    (scan mut $state:expr, $scan_id:expr) => {
+        $state
+            .scans
+            .iter_mut()
+            .filter(|x| x.id == $scan_id)
+            .next()?
+    };
+    (scan $state:expr, $scan_id:expr) => {
+        $state.iter().filter(|x| x.id == $scan_id).next()?
+    };
+    (state $state:expr) => {
+        get_mutexed($state)
+    };
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+struct Beans {
+    categories: Vec<(usize, String)>,
+    pay_options: Vec<(usize, String)>,
+}
+
+impl Beans {
+    fn new() -> Self {
+        Self {
+            categories: Vec::new(),
+            pay_options: Vec::new(),
+        }
+    }
+
+    fn inc_category(&mut self, category: &str) {
+        self.categories
+            .iter_mut()
+            .filter(|(_, f)| f == category)
+            .for_each(|(c, _)| {
+                *c += 1;
+            });
+        self.categories.sort_unstable_by(|a, b| b.cmp(a));
+    }
+
+    fn inc_pay(&mut self, pay_option: &str) {
+        self.pay_options
+            .iter_mut()
+            .filter(|(_, f)| f == pay_option)
+            .for_each(|(c, _)| {
+                *c += 1;
+            });
+
+        self.pay_options.sort_unstable_by(|a, b| b.cmp(a));
+    }
+}
+
 #[derive(FromForm)]
 struct CategoriseForm<'r> {
     category: &'r str,
@@ -25,7 +87,7 @@ struct CategoriseForm<'r> {
 type Scans = Repository<Vec<Scan>>;
 #[derive(Deserialize, Serialize, Debug, Clone)]
 struct Scan {
-    id: uuid::Uuid,
+    id: String,
     date: DateTime<Local>,
     items: Vec<ScanItem>,
 }
@@ -33,7 +95,7 @@ struct Scan {
 impl Scan {
     fn new() -> Self {
         Self {
-            id: uuid::Uuid::new_v4(),
+            id: uuid::Uuid::new_v4().to_string(),
             date: Local::now(),
             items: Vec::new(),
         }
@@ -55,7 +117,7 @@ impl Scan {
             })
             .collect();
         Self {
-            id: uuid::Uuid::new_v4(),
+            id: uuid::Uuid::new_v4().to_string(),
             date: Local::now(),
             items,
         }
@@ -86,7 +148,6 @@ impl Scan {
     }
 
     fn categorise(&mut self, uuid: &str, name: &str, price: f32, category: &str) {
-        let uuid = uuid::Uuid::parse_str(uuid).unwrap();
         if let Some(item) = self.items.iter_mut().filter(|x| x.id == uuid).next() {
             println!("got some scan item thing");
             item.category = Some(category.to_string());
@@ -98,7 +159,7 @@ impl Scan {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 struct ScanItem {
-    id: uuid::Uuid,
+    id: String,
     name: String,
     price: f32,
     category: Option<String>,
@@ -107,7 +168,7 @@ struct ScanItem {
 impl ScanItem {
     fn new<S: Into<String>>(name: S, price: f32) -> Self {
         Self {
-            id: uuid::Uuid::new_v4(),
+            id: uuid::Uuid::new_v4().to_string(),
             name: name.into(),
             price,
             category: None,
@@ -123,10 +184,16 @@ impl ScanItem {
 struct ScanConfigConfig {
     #[serde(default = "default_location")]
     scan_config_location: String,
+    #[serde(default = "default_beans_location")]
+    bean_config_location: String,
 }
 
 fn default_location() -> String {
     "scan_config.json".to_string()
+}
+
+fn default_beans_location() -> String {
+    "beans_cofig.json".to_string()
 }
 
 #[get("/")]
@@ -167,97 +234,87 @@ fn new_post() -> Redirect {
     Redirect::to("/scan")
 }
 
-macro_rules! get_foo {
-    (item mut $state:expr, $item_id:expr) => {
-        $state
-            .items
-            .iter_mut()
-            .filter(|x| x.id == $item_id)
-            .next()?
-    };
-    (item $state:expr, $item_id:expr) => {
-        $state.items.iter().filter(|x| x.id == $item_id).next()?
-    };
-    (scan mut $state:expr, $scan_id:expr) => {
-        $state
-            .scans
-            .iter_mut()
-            .filter(|x| x.id == $scan_id)
-            .next()?
-    };
-    (scan $state:expr, $scan_id:expr) => {
-        $state.iter().filter(|x| x.id == $scan_id).next()?
-    };
-    (state $state:expr) => {
-        get_mutexed($state)
-    };
-}
-
-#[get("/<uuid_str>")]
-fn get_scan(uuid_str: &str, scans: &State<Scans>) -> Option<Result<Template, Redirect>> {
+#[get("/<uuid>")]
+fn get_scan(
+    uuid: &str,
+    scans: &State<Scans>,
+    beans: &State<Repository<Beans>>,
+) -> Option<Result<Template, Redirect>> {
     scans.with(|state| {
-        let uuid = uuid::Uuid::parse_str(uuid_str).unwrap();
         let scan = get_foo!(scan state, uuid);
 
         if let Some(item) = scan.get_first() {
             Err(Redirect::to(uri!(
                 "/scan",
-                get_one(uuid_str, item.id.to_string())
+                get_one(uuid, item.id.to_string())
             )))
             .into()
         } else {
-            let context = json!({
-                "errors": [],
-            });
+            beans.with(|beans| {
+                let pay_options: Vec<_> = beans.pay_options.iter().map(|(_, x)| x).collect();
+                let context = json!({
+                    "errors": [],
+                    "pay_options": pay_options,
+                });
 
-            Ok(Template::render("scan/one", &context)).into()
+                Ok(Template::render("scan/one", &context)).into()
+            })
         }
     })
 }
 
-#[get("/<scan_id_str>/<item_id_str>")]
-fn get_one(scan_id_str: &str, item_id_str: &str, scans: &State<Scans>) -> Option<Template> {
-    let scan_id = uuid::Uuid::parse_str(scan_id_str).ok()?;
-    let item_id = uuid::Uuid::parse_str(item_id_str).ok()?;
-
+#[get("/<scan_id>/<item_id>")]
+fn get_one(
+    scan_id: &str,
+    item_id: &str,
+    scans: &State<Scans>,
+    beans: &State<Repository<Beans>>,
+) -> Option<Template> {
     scans.with(|state| {
         let scan = get_foo!(scan state, scan_id);
         let item = get_foo!(item scan, item_id);
 
-        let context = json!({
-            "errors": [],
-            "item": {
-                "name": item.name,
-                "price": item.price,
-            }
-        });
+        beans.with(|beans| {
+            let categories: Vec<_> = beans.categories.iter().map(|(_, x)| x).collect();
 
-        Template::render("scan/item", &context).into()
+            let context = json!({
+                "errors": [],
+                "item": {
+                    "name": item.name,
+                    "price": item.price,
+                },
+                "categories": categories,
+            });
+
+            Template::render("scan/item", &context).into()
+        })
     })
 }
 
-#[post("/<scan_id_str>/<item_id_str>", data = "<user_input>")]
+#[post("/<scan_id>/<item_id>", data = "<user_input>")]
 fn post_one(
-    scan_id_str: &str,
-    item_id_str: &str,
+    scan_id: &str,
+    item_id: &str,
     user_input: Form<CategoriseForm<'_>>,
     scans: &State<Scans>,
+    beans: &State<Repository<Beans>>,
 ) -> Redirect {
-    let scan_id = uuid::Uuid::parse_str(scan_id_str).unwrap();
-    // let item_id = uuid::Uuid::parse_str(item_id_str).unwrap();
+    beans.with_save(|beans| {
+        beans.inc_category(user_input.category);
+    });
 
     scans.with_save(|scans| {
         if let Some(scan) = scans.iter_mut().filter(|x| x.id == scan_id).next() {
             println!("Got some scan");
             scan.categorise(
-                item_id_str,
+                item_id,
                 user_input.name,
                 user_input.price,
                 user_input.category,
             );
         }
 
-        Redirect::to(format!("/scan/{}", scan_id_str))
+        Redirect::to(format!("/scan/{}", scan_id))
     })
 }
 
@@ -272,5 +329,13 @@ pub fn fuel(rocket: Rocket<Build>) -> Rocket<Build> {
             "scans config",
             |c: &ScanConfigConfig| c.scan_config_location.to_string(),
             vec![Scan::new_with(2), Scan::new_with(5)],
+        ))
+        .attach(Repository::<Beans>::adhoc(
+            "beans config",
+            |c: &ScanConfigConfig| c.bean_config_location.to_string(),
+            Beans {
+                categories: Vec::new(),
+                pay_options: Vec::new(),
+            },
         ))
 }

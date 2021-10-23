@@ -1,0 +1,46 @@
+{
+  "categories": [
+    [
+      7,
+      "Uitgaven:Eten:Alcohol"
+    ],
+    [
+      5,
+      "Uitgaven:Eten:Vlees"
+    ],
+    [
+      2,
+      "Uitgaven:Eten:GroentenFruit"
+    ],
+    [
+      1,
+      "Uitgaven:Eten:Frisdrank"
+    ],
+    [
+      1,
+      "Uitgaven:Eten:Brood"
+    ],
+    [
+      0,
+      "Uitgaven:Eten:Taart"
+    ],
+    [
+      0,
+      "Uitgaven:Eten"
+    ]
+  ],
+  "pay_options": [
+    [
+      0,
+      "Activa:CA:Arcky:Checking"
+    ],
+    [
+      0,
+      "Maaltijdcheck Arthur"
+    ],
+    [
+      0,
+      "Maaltijdcheck Nicky"
+    ]
+  ]
+}

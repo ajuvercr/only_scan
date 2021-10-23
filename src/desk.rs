@@ -1,6 +1,5 @@
 use std::cmp::Ordering;
 
-
 use rocket::fairing::AdHoc;
 use rocket::form::Form;
 use rocket::response::Redirect;
@@ -38,7 +37,7 @@ fn default_desk_server_port() -> u16 {
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 struct DeskStand {
-    id: uuid::Uuid,
+    id: String,
     name: String,
     amount: i32,
 }
@@ -48,7 +47,7 @@ impl DeskStand {
         Self {
             name: name.into(),
             amount,
-            id: uuid::Uuid::new_v4(),
+            id: uuid::Uuid::new_v4().to_string(),
         }
     }
 }
@@ -84,14 +83,13 @@ async fn exec_command<T: Serialize>(command: T, config: &DeskConfigConfig) -> Op
 
 #[get("/")]
 fn get(desks: &State<Desks>) -> Template {
-    desks
-        .with( |desks| {
-            let context = json!({
-                "desks": desks,
-                "errors": []
-            });
-            Template::render("desk", &context)
-        })
+    desks.with(|desks| {
+        let context = json!({
+            "desks": desks,
+            "errors": []
+        });
+        Template::render("desk", &context)
+    })
 }
 
 #[derive(FromForm)]
@@ -143,21 +141,14 @@ async fn new_desk(
 }
 
 #[post("/<uuid>")]
-async fn post(
-    uuid: &str,
-    desks: &State<Desks>,
-    config: &State<DeskConfigConfig>,
-) -> Option<()> {
+async fn post(uuid: &str, desks: &State<Desks>, config: &State<DeskConfigConfig>) -> Option<()> {
     #[derive(Serialize)]
     struct DeskAction {
         move_to: bool,
         move_to_raw: i32,
     }
 
-    let optional_desk = desks.with(|d| {
-        let uuid = uuid::Uuid::parse_str(uuid).unwrap();
-        d.iter().find(|x| x.id == uuid).cloned()
-    });
+    let optional_desk = desks.with(|d| d.iter().find(|x| x.id == uuid).cloned());
 
     if let Some(desk) = optional_desk {
         let action = DeskAction {
@@ -174,7 +165,6 @@ async fn post(
 #[get("/<uuid>/delete")]
 fn delete(uuid: &str, desks: &State<Desks>) -> Redirect {
     desks.with_save(|desks| {
-        let uuid = uuid::Uuid::parse_str(uuid).unwrap();
         desks.retain(|x| x.id != uuid);
 
         Redirect::to("/desk")

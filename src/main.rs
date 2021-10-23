@@ -6,11 +6,11 @@ extern crate rocket_dyn_templates;
 extern crate uuid;
 
 mod desk;
+pub mod repository;
 mod scan;
 mod serve;
 pub mod sorted_list;
 pub mod util;
-pub mod repository;
 
 #[cfg(test)]
 mod tests;
@@ -22,6 +22,11 @@ use std::path::{Path, PathBuf};
 use std::{ffi::OsStr, process::Command};
 
 use rocket::serde::{json::Json, Deserialize, Serialize};
+
+use rocket_dyn_templates::handlebars::{
+    Context, Handlebars, Helper, HelperDef, HelperResult, JsonRender, Output, RenderContext,
+    RenderError,
+};
 
 fn read_command<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(cmd: I) -> Option<String> {
     let mut cmd_parts = cmd.into_iter();
@@ -193,6 +198,27 @@ pub async fn files(path: PathBuf) -> Option<NamedFile> {
     NamedFile::open(path).await.ok()
 }
 
+fn another_simple_helper(
+    h: &Helper,
+    _: &Handlebars,
+    _: &Context,
+    _: &mut RenderContext,
+    out: &mut dyn Output,
+) -> HelperResult {
+    let param = h.param(0).unwrap();
+
+    let input: String = param.value().render();
+
+    let pretty = if let Some(rfind) = input.rfind(':') {
+        input.get(rfind+1..).unwrap()
+    } else {
+        input.as_ref()
+    };
+
+    out.write(pretty)?;
+    Ok(())
+}
+
 #[launch]
 fn rocket() -> _ {
     let statics: Vec<Route> = serve::StaticFiles::new("static", serve::Options::DotFiles).into();
@@ -203,6 +229,10 @@ fn rocket() -> _ {
     let rocket = desk::fuel(rocket);
     let rocket = scan::fuel(rocket);
 
-    rocket.attach(Template::fairing())
+    // This also adds the handlebars fairing
+    rocket.attach(Template::custom(|engines| {
+        engines
+            .handlebars
+            .register_helper("length", Box::new(another_simple_helper));
+    }))
 }
-// StaticFiles::from("/static")

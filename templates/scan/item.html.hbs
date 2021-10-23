@@ -5,28 +5,58 @@
 
 {{#*inline "page"}}
 
-<form action="#" method="POST">
-    <input id="name" name="name" type="text" value="{{item.name}}">
-    <input id="price" name="price" type="number" value="{{item.price}}">
+<form id="form" action="#" method="POST">
+    <div class="body">
+        <input id="name" name="name" type="text" value="{{item.name}}">
+        <input id="price" name="price" type="number" value="{{item.price}}">
 
-    <div>
-        <input type="radio" id="huey" name="category" value="huey" checked>
-        <label for="huey">Huey</label>
+        <input id="category" name="category" class="hidden" hidden>
+        <div class="tiles">
+            {{#each categories}}
+            <div class="tile small" onclick='submit("{{this}}")'>{{length this}}</div>
+            {{/each}}
+        </div>
+
+        <div class="bottom">
+            <input list="suggestionList" id="answerInput" autocomplete="off">
+            <datalist id="suggestionList">
+                {{#each categories}}
+                <option data-value="{{this}}">{{length this}}</option>
+                {{/each}}
+            </datalist>
+
+            <button onclick="submit2()">
+                Submit!
+            </button>
+        </div>
     </div>
-
-    <div>
-        <input type="radio" id="dewey" name="category" value="dewey">
-        <label for="dewey">Dewey</label>
-    </div>
-
-    <div>
-        <input type="radio" id="louie" name="category" value="louie">
-        <label for="louie">Louie</label>
-    </div>
-
-    <button type="submit">Submit</button>
 </form>
+
 
 {{/inline}}
 
 {{> base}}
+
+<script>
+    var form = document.getElementById("form");
+    var field = document.getElementById("category");
+    var otherInput = document.getElementById("answerInput");
+
+    var options = document.querySelectorAll('#suggestionList option');
+
+    function submit2() {
+        const targetV = otherInput.value;
+        for (let option of options) {
+            if (targetV === option.innerText) {
+                field.value = option.getAttribute("data-value");
+                break;
+            }
+        }
+        form.submit();
+    }
+
+    function submit(value) {
+        field.value = value;
+        form.submit();
+    }
+</script>

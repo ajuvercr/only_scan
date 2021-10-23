@@ -11,6 +11,37 @@
     width: 100%;
 }
 
-.option + .option {
+.option+.option {
     margin-top: 20px;
+}
+
+.tiles .small {
+    font-size: 1.2em;
+    width: 200px;
+    height: 200px;
+}
+
+input {
+    font: inherit;
+    padding: 0.2em 0.5em;
+}
+
+.body {
+    display: flex;
+    flex-direction: column;
+    max-width: 1024px;
+    gap: 24px;
+    margin: 48px auto;
+}
+
+.bottom {
+    width: 100%;
+    display: flex;
+    justify-content: space-evenly;
+    align-self: flex-end;
+    margin: 40px auto;
+}
+
+.bottom button {
+    padding: 10px;
 }

@@ -1,11 +1,9 @@
 html, body {
   height: 100%;
   margin: 0;
-  overflow: hidden;
 }
 
 body:not(.lc_mousedrag_is_mobile) #inner {
-  overflow: hidden;
   cursor: grab;
 }
 
@@ -63,6 +61,8 @@ a {
   align-items: center;
   width: 300px;
   height: 300px;
+
+  max-width: 40%;
   text-decoration: none;
   color: whitesmoke;
   font-weight: bolder;
