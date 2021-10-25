@@ -12,7 +12,7 @@ pub struct RespPart {
     text_annotations: Vec<TextAnnotation>,
 }
 
-const TRESH_HOLD: usize = 40;
+const TRESH_HOLD: isize = 40;
 impl RespPart {
     pub fn lines(&self) -> Vec<Vec<String>> {
         let mut out = Vec::new();
@@ -22,7 +22,7 @@ impl RespPart {
             .iter()
             .map(TextAnnotation::with_center)
             .collect();
-        annotations.sort_by_key(TextAnnotation::x);
+        annotations.sort_by_key(TextAnnotation::y);
 
         let mut sub = Vec::new();
         let mut current = None;
@@ -32,18 +32,18 @@ impl RespPart {
             ..
         } in annotations.into_iter()
         {
-            let new_v = x;
+            let new_v = y;
             if let Some(cur) = current {
                 if new_v - TRESH_HOLD < cur {
-                    sub.push((y, description));
+                    sub.push((x, description));
                 } else {
                     out.push(sub);
 
                     sub = Vec::new();
-                    sub.push((y, description));
+                    sub.push((x, description));
                 }
             } else {
-                sub.push((y, description));
+                sub.push((x, description));
             }
             current = Some(new_v);
         }
@@ -54,8 +54,8 @@ impl RespPart {
 
         out.into_iter()
             .map(|mut vec| {
-                vec.sort_by_key(|(y, _)| *y);
-                vec.into_iter().map(|(_, x)| x).collect()
+                vec.sort_by_key(|(x, _)| *x);
+                vec.into_iter().map(|(_, str)| str).collect()
             })
             .collect()
     }
@@ -79,8 +79,8 @@ impl TextAnnotation {
         }
     }
 
-    fn x(&self) -> usize {
-        self.center.x
+    fn y(&self) -> isize {
+        self.center.y
     }
 }
 
@@ -99,8 +99,8 @@ impl BoundingPoly {
 #[derive(Deserialize, Serialize, Debug, Clone, Copy)]
 #[serde(rename_all = "camelCase")]
 pub struct Point {
-    x: usize,
-    y: usize,
+    x: isize,
+    y: isize,
 }
 
 impl Point {
@@ -117,8 +117,8 @@ impl Point {
         );
 
         Point {
-            x: x / points.len(),
-            y: y / points.len(),
+            x: x / points.len() as isize,
+            y: y / points.len() as isize,
         }
     }
 }

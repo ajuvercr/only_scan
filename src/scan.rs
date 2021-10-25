@@ -12,10 +12,14 @@ use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 
 use chrono::prelude::*;
+use regex::Regex;
 
 use crate::repository::Repository;
-use crate::util::read_file;
+use crate::util::{self, read_file};
 use crate::vision;
+
+const TEMP_FILE_1: &'static str = "/tmp/file1.jpg";
+const TEMP_FILE_2: &'static str = "/tmp/file2.jpg";
 
 macro_rules! get_foo {
     (item mut $state:expr, $item_id:expr) => {
@@ -83,7 +87,7 @@ impl Beans {
 struct CategoriseForm<'r> {
     category: &'r str,
     name: &'r str,
-    price: f32,
+    price: usize,
 }
 
 type Scans = Repository<Vec<Scan>>;
@@ -118,11 +122,13 @@ impl Scan {
     }
 
     pub fn from_vec(vec: Vec<Vec<String>>) -> Self {
-        let date = vec
-            .iter()
-            .flat_map(|x| x.iter())
-            .filter_map(|x| NaiveDate::parse_from_str(x, "%d/%m/%y").ok())
-            .next()
+        let str: String = vec.iter().flatten().cloned().collect::<String>().replace(" ", "");
+
+        let re = Regex::new(r"(\d{2}/\d{2}/\d{2})").unwrap();
+        let date: NaiveDate = re
+            .captures(&str)
+            .and_then(|caps| caps.get(0))
+            .and_then(|x| NaiveDate::parse_from_str(x.as_str(), "%d/%m/%y").ok())
             .unwrap_or(Local::today().naive_local());
 
         let items = vec.into_iter().filter_map(ScanItem::try_from_vec).collect();
@@ -145,9 +151,8 @@ impl Scan {
         (done, self.items.len())
     }
 
-    fn categorise(&mut self, uuid: &str, name: &str, price: f32, category: &str) {
+    fn categorise(&mut self, uuid: &str, name: &str, price: usize, category: &str) {
         if let Some(item) = self.items.iter_mut().filter(|x| x.id == uuid).next() {
-            println!("got some scan item thing");
             item.category = Some(category.to_string());
             item.name = name.to_string();
             item.price = price;
@@ -159,12 +164,12 @@ impl Scan {
 struct ScanItem {
     id: String,
     name: String,
-    price: f32,
+    price: usize,
     category: Option<String>,
 }
 
 impl ScanItem {
-    fn new<S: Into<String>>(name: S, price: f32) -> Self {
+    fn new<S: Into<String>>(name: S, price: usize) -> Self {
         Self {
             id: uuid::Uuid::new_v4().to_string(),
             name: name.into(),
@@ -177,16 +182,34 @@ impl ScanItem {
         self.category.is_none()
     }
 
-    fn try_from_vec(vec: Vec<String>) -> Option<Self> {
+    fn try_from_vec(mut vec: Vec<String>) -> Option<Self> {
         if vec.len() < 2 {
             return None;
         }
+        vec.reverse();
         let mut iter = vec.into_iter();
 
-        let price_str = iter.next()?;
-        let price = price_str.replace(',', ".").parse().ok()?;
+        let mut price = 0;
+        let mut price_str = String::new();
+        loop {
+            price_str += &iter.next()?;
 
-        let name = iter.collect();
+            if !price_str.contains('.') && !price_str.contains(',') {
+                continue;
+            }
+
+            let price_try = price_str.replace(',', ".").parse::<f32>().ok();
+
+            if let Some(p) = price_try {
+                price = (p * 100.0) as usize;
+                break;
+            }
+        }
+
+        let name = iter.collect::<Vec<_>>().join(" ");
+        if name.contains("\n") {
+            return None;
+        }
 
         Some(Self {
             id: uuid::Uuid::new_v4().to_string(),
@@ -253,11 +276,10 @@ struct NewScan {
 
 #[post("/new", data = "<file>")]
 async fn new_post(mut file: TempFile<'_>, scans: &State<Scans>) -> Option<Redirect> {
-    // Exec command
-    // println!("input\n{:?}", input);
+    file.persist_to(TEMP_FILE_1).await.ok()?;
+    util::turn_image(TEMP_FILE_1, TEMP_FILE_2)?;
 
-    let file = read_file::<vision::Resp>("resp.json").await?;
-
+    let file = util::ocr(TEMP_FILE_2)?;
     let part = file.responses.into_iter().next()?;
     let lines = part.lines();
 
@@ -340,7 +362,6 @@ fn post_one(
 
     scans.with_save(|scans| {
         if let Some(scan) = scans.iter_mut().filter(|x| x.id == scan_id).next() {
-            println!("Got some scan");
             scan.categorise(
                 item_id,
                 user_input.name,
