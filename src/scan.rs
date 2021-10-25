@@ -1,5 +1,6 @@
 use rocket::fairing::AdHoc;
 use rocket::form::Form;
+use rocket::fs::TempFile;
 use rocket::response::Redirect;
 use rocket::serde::json::serde_json::json;
 use rocket::serde::{Deserialize, Serialize};
@@ -13,7 +14,8 @@ use rand::{thread_rng, Rng};
 use chrono::prelude::*;
 
 use crate::repository::Repository;
-use crate::sorted_list::SortedList;
+use crate::util::read_file;
+use crate::vision;
 
 macro_rules! get_foo {
     (item mut $state:expr, $item_id:expr) => {
@@ -88,19 +90,11 @@ type Scans = Repository<Vec<Scan>>;
 #[derive(Deserialize, Serialize, Debug, Clone)]
 struct Scan {
     id: String,
-    date: DateTime<Local>,
+    date: NaiveDate,
     items: Vec<ScanItem>,
 }
 
 impl Scan {
-    fn new() -> Self {
-        Self {
-            id: uuid::Uuid::new_v4().to_string(),
-            date: Local::now(),
-            items: Vec::new(),
-        }
-    }
-
     fn new_with(count: usize) -> Self {
         let mut rng = thread_rng();
         let items = (0..count)
@@ -118,24 +112,28 @@ impl Scan {
             .collect();
         Self {
             id: uuid::Uuid::new_v4().to_string(),
-            date: Local::now(),
+            date: Local::today().naive_local(),
             items,
         }
     }
 
-    fn sorted_list() -> SortedList<Scan> {
-        SortedList::new_on_field(|x: &Scan| x.date)
-    }
-
-    fn to_categorise<'a>(&'a self) -> Vec<&'a ScanItem> {
-        self.items
+    pub fn from_vec(vec: Vec<Vec<String>>) -> Self {
+        let date = vec
             .iter()
-            .filter(|x| x.needs_categorised())
-            .collect()
-    }
+            .flat_map(|x| x.iter())
+            .filter_map(|x| NaiveDate::parse_from_str(x, "%d/%m/%y").ok())
+            .next()
+            .unwrap_or(Local::today().naive_local());
 
-    fn is_done(&self) -> bool {
-        !self.items.iter().any(|x| x.needs_categorised())
+        let items = vec.into_iter().filter_map(ScanItem::try_from_vec).collect();
+
+        let out = Self {
+            id: uuid::Uuid::new_v4().to_string(),
+            date,
+            items,
+        };
+
+        out
     }
 
     fn get_first<'a>(&'a self) -> Option<&'a ScanItem> {
@@ -177,6 +175,25 @@ impl ScanItem {
 
     fn needs_categorised(&self) -> bool {
         self.category.is_none()
+    }
+
+    fn try_from_vec(vec: Vec<String>) -> Option<Self> {
+        if vec.len() < 2 {
+            return None;
+        }
+        let mut iter = vec.into_iter();
+
+        let price_str = iter.next()?;
+        let price = price_str.replace(',', ".").parse().ok()?;
+
+        let name = iter.collect();
+
+        Some(Self {
+            id: uuid::Uuid::new_v4().to_string(),
+            name,
+            price,
+            category: None,
+        })
     }
 }
 
@@ -229,9 +246,27 @@ fn new_get() -> Template {
     Template::render("scan/new", &context)
 }
 
-#[post("/new")]
-fn new_post() -> Redirect {
-    Redirect::to("/scan")
+#[derive(FromForm, Debug)]
+struct NewScan {
+    file: String,
+}
+
+#[post("/new", data = "<file>")]
+async fn new_post(mut file: TempFile<'_>, scans: &State<Scans>) -> Option<Redirect> {
+    // Exec command
+    // println!("input\n{:?}", input);
+
+    let file = read_file::<vision::Resp>("resp.json").await?;
+
+    let part = file.responses.into_iter().next()?;
+    let lines = part.lines();
+
+    let scan = Scan::from_vec(lines);
+    let id = scan.id.clone();
+
+    scans.with_save(|scans| scans.push(scan));
+
+    Redirect::to(uri!("/scan", get_scan(id))).into()
 }
 
 #[get("/<uuid>")]

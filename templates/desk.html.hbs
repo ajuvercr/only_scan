@@ -1,33 +1,33 @@
 {{#*inline "headers"}}
-    <title>Desk | Only_Scan</title>
-    <link rel="stylesheet" href="/desk.css">
+<title>Desk | Only_Scan</title>
+<link rel="stylesheet" href="/desk.css">
 {{/inline}}
 
 
 {{#*inline "page"}}
 
 <div class="desks">
-{{#each desks}}
+    {{#each desks}}
     <div class="desk option" onclick="go_brr( $event, '{{ this.id }}' )">
         <span>{{this.name}}: {{this.amount}}</span>
         <a href="/desk/{{this.id}}/delete"></a>
     </div>
-{{/each}}
+    {{/each}}
     <div class="form">
         <h3 class="desk">Create a new setting</h3>
         <form method="post" action="/desk/new">
-        <div class="desk" >
-            <label for="name">Name:</label>
-            <input type="text" id="name" name="name">
-        </div>
-            <div class="desk" >
+            <div class="desk">
+                <label for="name">Name:</label>
+                <input type="text" id="name" name="name">
+            </div>
+            <div class="desk">
 
-            <label for="amount">Amount:</label>
-            <input type="number" id="amount" name="amount" placeholder="Leave blank for current height">
-        </div>
-        <div class="desk">
-            <input class="button" type="submit" value="Submit">
-        </div>
+                <label for="amount">Amount:</label>
+                <input type="number" id="amount" name="amount" placeholder="Leave blank for current height">
+            </div>
+            <div class="desk">
+                <input class="button" type="submit" value="Submit">
+            </div>
         </form>
     </div>
 </div>
@@ -36,7 +36,7 @@
 <script>
     function go_brr(event, id) {
         if (event.target === event.currentTarget) {
-            fetch("/desk/" + id,  { method: 'POST' });
+            fetch("/desk/" + id, { method: 'POST' });
         }
     }
 </script>

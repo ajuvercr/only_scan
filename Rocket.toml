@@ -6,3 +6,4 @@ desk_server_ip = "192.168.0.69"
 
 [default.limits]
 file = "20 MiB"
+forms = "20 Mib"

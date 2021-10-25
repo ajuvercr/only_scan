@@ -1,22 +1,18 @@
 
 async function upload_file(file) {
-    var xmlHttpRequest = new XMLHttpRequest();
+    var xhr = new XMLHttpRequest();
 
     var mimeType = "image/png";
     const fileName = file.name;
 
-    xmlHttpRequest.open('POST', '/upload', true);
-    xmlHttpRequest.setRequestHeader('Content-Type', mimeType);
-    xmlHttpRequest.setRequestHeader('Content-Disposition', 'attachment; filename="' + fileName + '"');
-    xmlHttpRequest.send(file);
+    xhr.open('POST', '#', true);
+    xhr.setRequestHeader('Content-Type', mimeType);
+    xhr.setRequestHeader('Content-Disposition', 'attachment; filename="' + fileName + '"');
+    xhr.send(file);
+    xhr.addEventListener('progress', console.log);
 
-    xmlHttpRequest.onload = function () {
-        if (xmlHttpRequest.readyState === xmlHttpRequest.DONE) {
-            if (xmlHttpRequest.status === 200) {
-                console.log(xmlHttpRequest.response);
-                console.log(xmlHttpRequest.responseText);
-            }
-        }
+    xhr.onreadystatechange = function () {
+        window.location.href = xhr.responseURL;
     };
 }
 
@@ -181,7 +177,7 @@ class ImageHandler {
     async upload() {
         if (!this.image) return;
 
-        // this.crop(upload_file);
+        this.crop(upload_file);
         // if (!this.data_url && this.image) this.data_url = image_to_data_url(this.image);
         // if (!this.data_url) return;
 
@@ -235,7 +231,7 @@ async function main() {
 
     const image = new Image();
     image.onload = () => image_handler.set_image(image);
-    image.src = "test.jpg";
+    image.src = "/test.jpg";
 }
 
 

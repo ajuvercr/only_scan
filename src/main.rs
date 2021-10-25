@@ -11,6 +11,7 @@ mod scan;
 mod serve;
 pub mod sorted_list;
 pub mod util;
+pub mod vision;
 
 #[cfg(test)]
 mod tests;
@@ -173,7 +174,7 @@ pub fn parse_text(input: &str) -> Option<Item> {
 }
 
 #[get("/")]
-fn index() -> Template {
+async fn index() -> Template {
     #[derive(Serialize)]
     struct IndexContext {
         firstname: String,
@@ -210,7 +211,7 @@ fn another_simple_helper(
     let input: String = param.value().render();
 
     let pretty = if let Some(rfind) = input.rfind(':') {
-        input.get(rfind+1..).unwrap()
+        input.get(rfind + 1..).unwrap()
     } else {
         input.as_ref()
     };
