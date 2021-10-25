@@ -18,6 +18,9 @@
         </div>
 
         <div class="bottom">
+            <button onclick="delete_f(event)">
+                Delete
+            </button>
             <input list="suggestionList" id="answerInput" autocomplete="off">
             <datalist id="suggestionList">
                 {{#each categories}}
@@ -31,7 +34,6 @@
         </div>
     </div>
 </form>
-
 
 {{/inline}}
 
@@ -58,5 +60,16 @@
     function submit(value) {
         field.value = value;
         form.submit();
+    }
+
+    async function delete_f(event) {
+        event.preventDefault();
+        const resp = await fetch("#", {
+            method: 'DELETE',
+            headers: {
+                'Content-type': 'application/json'
+            }
+        });
+        window.location.href = resp.url;
     }
 </script>

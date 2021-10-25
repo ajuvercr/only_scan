@@ -99,6 +99,11 @@ struct Scan {
 }
 
 impl Scan {
+
+    fn delete(&mut self, id: &str) {
+        self.items.retain(|x| x.id != id);
+    }
+
     fn new_with(count: usize) -> Self {
         let mut rng = thread_rng();
         let items = (0..count)
@@ -122,7 +127,12 @@ impl Scan {
     }
 
     pub fn from_vec(vec: Vec<Vec<String>>) -> Self {
-        let str: String = vec.iter().flatten().cloned().collect::<String>().replace(" ", "");
+        let str: String = vec
+            .iter()
+            .flatten()
+            .cloned()
+            .collect::<String>()
+            .replace(" ", "");
 
         let re = Regex::new(r"(\d{2}/\d{2}/\d{2})").unwrap();
         let date: NaiveDate = re
@@ -374,11 +384,23 @@ fn post_one(
     })
 }
 
+#[delete("/<scan_id>/<item_id>")]
+fn delete_one(scan_id: &str, item_id: &str, scans: &State<Scans>) -> Redirect {
+    println!("Deleting");
+    scans.with_save(|scans| {
+        if let Some(scan) = scans.iter_mut().filter(|x| x.id == scan_id).next() {
+            scan.delete(item_id);
+        }
+    });
+
+    Redirect::to(format!("/scan/{}", scan_id))
+}
+
 pub fn fuel(rocket: Rocket<Build>) -> Rocket<Build> {
     rocket
         .mount(
             "/scan",
-            routes![get, new_get, new_post, get_scan, get_one, post_one],
+            routes![get, new_get, new_post, get_scan, get_one, post_one, delete_one],
         )
         .attach(AdHoc::config::<ScanConfigConfig>())
         .attach(Repository::<Vec<Scan>>::adhoc(
