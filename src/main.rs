@@ -2,9 +2,9 @@
 extern crate rocket;
 extern crate chrono;
 extern crate rand;
+extern crate regex;
 extern crate rocket_dyn_templates;
 extern crate uuid;
-extern crate regex;
 
 mod desk;
 pub mod repository;

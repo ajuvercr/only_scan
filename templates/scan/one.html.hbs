@@ -6,8 +6,35 @@
 {{#*inline "page"}}
 
 
+<h1>
+    Scan of {{date}}
+</h1>
 
+{{#each items}}
+<p>
+    {{this.name}}: {{this.price}} {{this.category}}
+</p>
+{{/each}}
 
+<form method="post" action="#">
+    <input name="rest" list="suggestionList" autocomplete="off">
+    <datalist id="suggestionList">
+        {{#each categories}}
+        <option data-value="{{this}}">{{length this}}</option>
+        {{/each}}
+    </datalist>
+
+    <input name="pay" list="paymentList" autocomplete="off">
+    <datalist id="paymentList">
+        {{#each pay_options}}
+        <option data-value="{{this}}">{{length this}}</option>
+        {{/each}}
+    </datalist>
+
+    <input name="total" value="{{total}}">
+
+    <input class="button" type="submit" value="Submit">
+</form>
 
 {{/inline}}
 

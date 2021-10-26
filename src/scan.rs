@@ -99,7 +99,6 @@ struct Scan {
 }
 
 impl Scan {
-
     fn delete(&mut self, id: &str) {
         self.items.retain(|x| x.id != id);
     }
@@ -115,7 +114,7 @@ impl Scan {
                         .take(7)
                         .map(char::from)
                         .collect(),
-                    rng.gen(),
+                    rng.gen_range(50..1000),
                 )
             })
             .collect();
@@ -319,14 +318,59 @@ fn get_scan(
         } else {
             beans.with(|beans| {
                 let pay_options: Vec<_> = beans.pay_options.iter().map(|(_, x)| x).collect();
+                let categories: Vec<_> = beans.categories.iter().map(|(_, x)| x).collect();
+                let total: usize = scan.items.iter().map(|item| item.price).sum();
+
+                let items: Vec<_> = scan
+                    .items
+                    .iter()
+                    .map(|item| {
+                        json!({
+                            "name": item.name,
+                            "price": item.price,
+                            "category": item.category,
+                        })
+                    })
+                    .collect();
                 let context = json!({
                     "errors": [],
                     "pay_options": pay_options,
+                    "categories": categories,
+                    "total": total,
+                    "items": items,
+                    "date": scan.date.format("%d/%m/%C").to_string(),
                 });
 
                 Ok(Template::render("scan/one", &context)).into()
             })
         }
+    })
+}
+
+#[derive(FromForm, Debug, Clone)]
+struct FinishScan<'r> {
+    total: usize,
+    pay: &'r str,
+    rest: &'r str,
+}
+
+#[post("/<scan_id>", data = "<user_input>")]
+fn post_scan(
+    scan_id: &str,
+    user_input: Form<FinishScan<'_>>,
+    scans: &State<Scans>,
+    beans: &State<Repository<Beans>>,
+) -> Option<Redirect> {
+    scans.with_save(|scans| {
+        let scan_index = scans.iter().position(|x| x.id == scan_id)?;
+        let scan = scans.get_mut(scan_index)?;
+
+        beans.with_save(|beans| {
+            beans.inc_pay(user_input.pay);
+        });
+
+        // scans.remove(scan_index);
+        Redirect::to("/scan").into()
     })
 }
 
@@ -400,7 +444,7 @@ pub fn fuel(rocket: Rocket<Build>) -> Rocket<Build> {
     rocket
         .mount(
             "/scan",
-            routes![get, new_get, new_post, get_scan, get_one, post_one, delete_one],
+            routes![get, new_get, new_post, get_scan, post_scan, get_one, post_one, delete_one],
         )
         .attach(AdHoc::config::<ScanConfigConfig>())
         .attach(Repository::<Vec<Scan>>::adhoc(
