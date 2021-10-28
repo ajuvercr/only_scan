@@ -90,8 +90,6 @@ class ImageHandler {
         }
         this.should_resize = false;
 
-        console.log("HERE");
-
         const box = this.parent.getBoundingClientRect();
         let image_aspect = this.image.naturalHeight / this.image.naturalWidth;
         const [top, left, width, height] = calculate_image_background_box(box, image_aspect);

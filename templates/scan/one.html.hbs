@@ -6,35 +6,65 @@
 {{#*inline "page"}}
 
 
-<h1>
-    Scan of {{date}}
-</h1>
 
-{{#each items}}
-<p>
-    {{this.name}}: {{this.price}} {{this.category}}
-</p>
-{{/each}}
+<form method="post" class="form" action="#">
+    <p>
+        Scan name:
+        <input name="name" placeholder="Delhaise">
+    </p>
 
-<form method="post" action="#">
-    <input name="rest" list="suggestionList" autocomplete="off">
-    <datalist id="suggestionList">
-        {{#each categories}}
-        <option data-value="{{this}}">{{length this}}</option>
-        {{/each}}
-    </datalist>
+    <p>
+        Date:
+        <input name="date" type="date" value="{{date}}">
+    </p>
 
-    <input name="pay" list="paymentList" autocomplete="off">
-    <datalist id="paymentList">
-        {{#each pay_options}}
-        <option data-value="{{this}}">{{length this}}</option>
-        {{/each}}
-    </datalist>
+    {{#each items}}
+    <p>
+        {{this.name}}: {{this.price}} {{length this.category}}
+    </p>
+    {{/each}}
 
-    <input name="total" value="{{total}}">
+    <div id="payments">
+        <div class="fields">
+            <p>
+                Rest category:
+                <select id="suggestionList" name="rest[]">
+                    {{#each categories}}
+                    <option data-value="{{this}}">{{length this}}</option>
+                    {{/each}}
+                </select>
+            </p>
+            <p>
+                Pay method:
+                <select id="paymentList" name="pay[]">
+                    {{#each pay_options}}
+                    <option data-value="{{this}}">{{length this}}</option>
+                    {{/each}}
+                </select>
+            </p>
+            <p>
+                Total price:
+                <input name="total[]" value="{{total}}">
+            </p>
+        </div>
+    </div>
+
+    <button onclick="add_payment(event)">Add payment option</button>
+
 
     <input class="button" type="submit" value="Submit">
 </form>
+
+
+<script>
+    function add_payment(e) {
+        e.preventDefault();
+        const payments = document.getElementById("payments");
+        payments.appendChild(
+            payments.children[0].cloneNode(deep = true)
+        );
+    }
+</script>
 
 {{/inline}}
 

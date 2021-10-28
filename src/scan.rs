@@ -1,3 +1,5 @@
+use std::time::SystemTime;
+
 use rocket::fairing::AdHoc;
 use rocket::form::Form;
 use rocket::fs::TempFile;
@@ -16,7 +18,7 @@ use regex::Regex;
 
 use crate::repository::Repository;
 use crate::util::{self, read_file};
-use crate::vision;
+use crate::vision::{self, Resp};
 
 const TEMP_FILE_1: &'static str = "/tmp/file1.jpg";
 const TEMP_FILE_2: &'static str = "/tmp/file2.jpg";
@@ -94,7 +96,7 @@ type Scans = Repository<Vec<Scan>>;
 #[derive(Deserialize, Serialize, Debug, Clone)]
 struct Scan {
     id: String,
-    date: NaiveDate,
+    date: time::Date,
     items: Vec<ScanItem>,
 }
 
@@ -120,7 +122,7 @@ impl Scan {
             .collect();
         Self {
             id: uuid::Uuid::new_v4().to_string(),
-            date: Local::today().naive_local(),
+            date: time::Date::today(),
             items,
         }
     }
@@ -134,11 +136,15 @@ impl Scan {
             .replace(" ", "");
 
         let re = Regex::new(r"(\d{2}/\d{2}/\d{2})").unwrap();
-        let date: NaiveDate = re
+        let mut date: time::Date = re
             .captures(&str)
             .and_then(|caps| caps.get(0))
-            .and_then(|x| NaiveDate::parse_from_str(x.as_str(), "%d/%m/%y").ok())
-            .unwrap_or(Local::today().naive_local());
+            .and_then(|x| time::Date::parse(x.as_str(), "%d/%m/%y").ok())
+            .unwrap_or(time::Date::today());
+
+        if date.year() < 2000 {
+            date = time::Date::try_from_ymd(date.year() + 2000, date.month(), date.day()).unwrap();
+        }
 
         let items = vec.into_iter().filter_map(ScanItem::try_from_vec).collect();
 
@@ -252,7 +258,7 @@ fn get(scans: &State<Scans>) -> Template {
             .iter()
             .map(|scan| {
                 json!({
-                    "date": scan.date.format("%d/%m/%C").to_string(),
+                    "date": scan.date.format("%d/%m/%y").to_string(),
                     "done": scan.count_done().0,
                     "total": scan.count_done().1,
                     "id": scan.id,
@@ -285,10 +291,11 @@ struct NewScan {
 
 #[post("/new", data = "<file>")]
 async fn new_post(mut file: TempFile<'_>, scans: &State<Scans>) -> Option<Redirect> {
-    file.persist_to(TEMP_FILE_1).await.ok()?;
-    util::turn_image(TEMP_FILE_1, TEMP_FILE_2)?;
+    // file.persist_to(TEMP_FILE_1).await.ok()?;
+    // util::turn_image(TEMP_FILE_1, TEMP_FILE_2)?;
 
-    let file = util::ocr(TEMP_FILE_2)?;
+    // let file = util::ocr(TEMP_FILE_2)?;
+    let file: Resp = util::read_file("resp.json").await?;
     let part = file.responses.into_iter().next()?;
     let lines = part.lines();
 
@@ -338,7 +345,7 @@ fn get_scan(
                     "categories": categories,
                     "total": total,
                     "items": items,
-                    "date": scan.date.format("%d/%m/%C").to_string(),
+                    "date": scan.date.format("%Y-%m-%d"),
                 });
 
                 Ok(Template::render("scan/one", &context)).into()
@@ -349,9 +356,18 @@ fn get_scan(
 
 #[derive(FromForm, Debug, Clone)]
 struct FinishScan<'r> {
+    name: &'r str,
+    total: Vec<usize>,
+    rest: Vec<&'r str>,
+    pay: Vec<&'r str>,
+    date: time::Date,
+}
+
+#[derive(FromForm, Debug, Clone)]
+struct Payment<'r> {
     total: usize,
-    pay: &'r str,
     rest: &'r str,
+    pay: &'r str,
 }
 
 #[post("/<scan_id>", data = "<user_input>")]
@@ -361,12 +377,16 @@ fn post_scan(
     scans: &State<Scans>,
     beans: &State<Repository<Beans>>,
 ) -> Option<Redirect> {
+    println!("input {:?}", user_input);
+
+    println!("date: {}", user_input.date);
+
     scans.with_save(|scans| {
         let scan_index = scans.iter().position(|x| x.id == scan_id)?;
         let scan = scans.get_mut(scan_index)?;
 
         beans.with_save(|beans| {
-            beans.inc_pay(user_input.pay);
+            beans.inc_pay(user_input.pay[0]);
         });
 
         // scans.remove(scan_index);
@@ -386,7 +406,9 @@ fn get_one(
         let item = get_foo!(item scan, item_id);
 
         beans.with(|beans| {
-            let categories: Vec<_> = beans.categories.iter().map(|(_, x)| x).collect();
+            let (left, right) = beans.categories.split_at(6);
+
+            // let categories: Vec<_> = beans.categories.iter().map(|(_, x)| x).collect();
 
             let context = json!({
                 "errors": [],
@@ -394,7 +416,8 @@ fn get_one(
                     "name": item.name,
                     "price": item.price,
                 },
-                "categories": categories,
+                "categories_left": left,
+                "categories_right": right,
             });
 
             Template::render("scan/item", &context).into()

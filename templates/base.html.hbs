@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -7,16 +8,20 @@
     <link rel="stylesheet" href="/style.css">
     {{> headers}}
 </head>
-<body>
-    <a href="/"><h1 id="title">Hej</h1></a>
 
-{{#each errors}}
-<div class="error">
-    <h3>{{this.header}}</h3>
-    <p>{{this.body}}</p>
-</div>
-{{/each}}
+<body>
+    <a href="/">
+        <h1 id="title">Hej</h1>
+    </a>
+
+    {{#each errors}}
+    <div class="error">
+        <h3>{{this.header}}</h3>
+        <p>{{this.body}}</p>
+    </div>
+    {{/each}}
 
     {{> page}}
 </body>
+
 </html>

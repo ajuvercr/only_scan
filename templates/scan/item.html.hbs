@@ -5,33 +5,43 @@
 
 {{#*inline "page"}}
 
-<form id="form" action="#" method="POST">
-    <div class="body">
-        <input id="name" name="name" type="text" value="{{item.name}}">
-        <input id="price" name="price" type="number" value="{{item.price}}">
+<form id="form" class="form" action="#" method="POST">
+    <div class="fields">
+        <p>
+            Name:
+            <input id="name" name="name" type="text" value="{{item.name}}">
+        </p>
 
-        <input id="category" name="category" class="hidden" hidden>
-        <div class="tiles">
-            {{#each categories}}
-            <div class="tile small" onclick='submit("{{this}}")'>{{length this}}</div>
-            {{/each}}
-        </div>
+        <p>
+            Price:
+            <input id="price" name="price" type="number" value="{{item.price}}">
+        </p>
+    </div>
 
-        <div class="bottom">
-            <button onclick="delete_f(event)">
-                Delete
-            </button>
+    <input id="category" name="category" class="hidden" hidden>
+    <div class="tiles">
+        {{#each categories_left}}
+        <div class="tile small" onclick='submit("{{this.1}}")'>{{length this.1}}</div>
+        {{/each}}
+    </div>
+
+    <div class="bottom">
+        <button onclick="delete_f(event)">
+            Delete
+        </button>
+        <p>
+            Other categories:
             <input list="suggestionList" id="answerInput" autocomplete="off">
             <datalist id="suggestionList">
-                {{#each categories}}
-                <option data-value="{{this}}">{{length this}}</option>
+                {{#each categories_right}}
+                <option data-value="{{this.1}}">{{length this.1}}</option>
                 {{/each}}
             </datalist>
+        </p>
 
-            <button onclick="submit2()">
-                Submit!
-            </button>
-        </div>
+        <button onclick="submit2()">
+            Submit!
+        </button>
     </div>
 </form>
 

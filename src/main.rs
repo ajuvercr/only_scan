@@ -4,6 +4,7 @@ extern crate chrono;
 extern crate rand;
 extern crate regex;
 extern crate rocket_dyn_templates;
+extern crate time;
 extern crate uuid;
 
 mod desk;
@@ -52,6 +53,8 @@ fn another_simple_helper(
     let param = h.param(0).unwrap();
 
     let input: String = param.value().render();
+
+    println!("input {}", input);
 
     let pretty = if let Some(rfind) = input.rfind(':') {
         input.get(rfind + 1..).unwrap()

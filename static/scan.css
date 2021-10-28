@@ -1,47 +1,74 @@
 .scan_list {
-    margin: auto;
-    width: max-content;
-    min-width: 40vw;
-    margin-top: 40px;
+  margin: auto;
+  width: max-content;
+  min-width: 40vw;
+  margin-top: 40px;
 }
 
 .new_button {
-    display: flex;
-    justify-content: space-between;
-    width: 100%;
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
 }
 
-.option+.option {
-    margin-top: 20px;
+.option + .option {
+  margin-top: 20px;
 }
 
 .tiles .small {
-    font-size: 1.2em;
-    width: 200px;
-    height: 200px;
+  font-size: 1.2em;
+  width: 300px;
+  height: 300px;
 }
 
 input {
-    font: inherit;
-    padding: 0.2em 0.5em;
-}
-
-.body {
-    display: flex;
-    flex-direction: column;
-    max-width: 1024px;
-    gap: 24px;
-    margin: 48px auto;
+  font: inherit;
+  padding: 0.2em 0.5em;
 }
 
 .bottom {
-    width: 100%;
-    display: flex;
-    justify-content: space-evenly;
-    align-self: flex-end;
-    margin: 40px auto;
+  width: 100%;
+  display: flex;
+  justify-content: space-evenly;
+  align-self: flex-end;
+  margin-top: 40px auto;
 }
 
 .bottom button {
-    padding: 10px;
+  padding: 10px;
+}
+
+.fields {
+  align-items: baseline;
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+}
+
+.main {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  /* grid-template-rows: auto 50px; */
+  justify-content: space-between;
+}
+
+.content {
+  background-position: center;
+  background-size: contain;
+  background-repeat: no-repeat;
+  width: 100%;
+  margin-top: 20px;
+  margin-bottom: 30px;
+  height: 100%;
+  position: relative;
+}
+
+.form {
+  flex-direction: column;
+  gap: 20px;
+  display: flex;
+  justify-content: space-evenly;
+  max-width: 1024px;
+  margin: 0 auto;
 }
