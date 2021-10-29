@@ -13,10 +13,21 @@
         <input name="name" placeholder="Delhaise">
     </p>
 
-    <p>
-        Date:
-        <input name="date" type="date" value="{{date}}">
-    </p>
+    <div class="fields">
+        <p>
+            Date:
+            <input name="date" type="date" value="{{date}}">
+        </p>
+
+        <p>
+            Rest category:
+            <select id="suggestionList" name="rest">
+                {{#each categories}}
+                <option data-value="{{this}}">{{this}}</option>
+                {{/each}}
+            </select>
+        </p>
+    </div>
 
     {{#each items}}
     <p>
@@ -27,18 +38,10 @@
     <div id="payments">
         <div class="fields">
             <p>
-                Rest category:
-                <select id="suggestionList" name="rest[]">
-                    {{#each categories}}
-                    <option data-value="{{this}}">{{length this}}</option>
-                    {{/each}}
-                </select>
-            </p>
-            <p>
                 Pay method:
                 <select id="paymentList" name="pay[]">
                     {{#each pay_options}}
-                    <option data-value="{{this}}">{{length this}}</option>
+                    <option data-value="{{this}}">{{this}}</option>
                     {{/each}}
                 </select>
             </p>

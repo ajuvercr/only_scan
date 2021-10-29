@@ -1,3 +1,5 @@
+#![feature(iter_zip)]
+
 use std::time::SystemTime;
 
 use rocket::fairing::AdHoc;
@@ -13,7 +15,6 @@ use rocket_dyn_templates::Template;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 
-use chrono::prelude::*;
 use regex::Regex;
 
 use crate::repository::Repository;
@@ -358,7 +359,7 @@ fn get_scan(
 struct FinishScan<'r> {
     name: &'r str,
     total: Vec<usize>,
-    rest: Vec<&'r str>,
+    rest: &'r str,
     pay: Vec<&'r str>,
     date: time::Date,
 }
@@ -366,8 +367,77 @@ struct FinishScan<'r> {
 #[derive(FromForm, Debug, Clone)]
 struct Payment<'r> {
     total: usize,
-    rest: &'r str,
     pay: &'r str,
+}
+
+use std::collections::HashMap;
+struct ScanOutput<'r, 'b> {
+    items: HashMap<&'r str, usize>,
+    date: time::Date,
+    name: &'r str,
+    rest: &'r str,
+    payments: &'b Vec<Payment<'r>>,
+}
+
+impl<'r, 'b> ScanOutput<'r, 'b> {
+    pub fn new<T>(
+        raw_items: T,
+        date: time::Date,
+        name: &'r str,
+        rest: &'r str,
+        payments: &'b Vec<Payment<'r>>,
+    ) -> Self
+    where
+        T: IntoIterator<Item = &'b ScanItem>,
+        'b: 'r,
+    {
+        let mut items = HashMap::new();
+
+        for i in raw_items.into_iter().filter(|i| i.category.is_some()) {
+            let cat = i.category.as_ref().unwrap().as_str();
+            if let Some(vec) = items.get_mut(cat) {
+                *vec += i.price;
+            } else {
+                items.insert(cat, i.price);
+            }
+        }
+
+        Self {
+            items,
+            date,
+            name,
+            rest,
+            payments,
+        }
+    }
+}
+
+use std::fmt;
+impl fmt::Display for ScanOutput<'_, '_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let date_str = self.date.format("%Y-%m-%d");
+        writeln!(f, "{} * \"{}\"", date_str, self.name)?;
+        for payment in self.payments.iter() {
+            writeln!(
+                f,
+                "    {} -{:.2}",
+                payment.pay,
+                payment.total as f64 / 100.0
+            )?;
+        }
+
+        for (k, v) in self.items.iter() {
+            writeln!(f, "    {} {:.2}", k, *v as f32 / 100.0)?;
+        }
+
+        if self.items.values().sum::<usize>()
+            != self.payments.iter().map(|p| p.total).sum::<usize>()
+        {
+            writeln!(f, "    {}", self.rest)?;
+        }
+
+        Ok(())
+    }
 }
 
 #[post("/<scan_id>", data = "<user_input>")]
@@ -381,9 +451,23 @@ fn post_scan(
 
     println!("date: {}", user_input.date);
 
+    let zips = user_input.pay.iter().zip(user_input.total.iter());
+
+    let payments: Vec<_> = zips.map(|(pay, &total)| Payment { total, pay }).collect();
+
     scans.with_save(|scans| {
         let scan_index = scans.iter().position(|x| x.id == scan_id)?;
         let scan = scans.get_mut(scan_index)?;
+
+        let output = ScanOutput::new(
+            &scan.items,
+            user_input.date,
+            user_input.name,
+            user_input.rest,
+            &payments,
+        );
+
+        println!("output\n{}", output);
 
         beans.with_save(|beans| {
             beans.inc_pay(user_input.pay[0]);
