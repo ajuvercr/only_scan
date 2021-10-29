@@ -1,7 +1,3 @@
-#![feature(iter_zip)]
-
-use std::time::SystemTime;
-
 use rocket::fairing::AdHoc;
 use rocket::form::Form;
 use rocket::fs::TempFile;
@@ -18,8 +14,8 @@ use rand::{thread_rng, Rng};
 use regex::Regex;
 
 use crate::repository::Repository;
-use crate::util::{self, read_file};
-use crate::vision::{self, Resp};
+use crate::util;
+use crate::vision::Resp;
 
 const TEMP_FILE_1: &'static str = "/tmp/file1.jpg";
 const TEMP_FILE_2: &'static str = "/tmp/file2.jpg";
@@ -57,13 +53,6 @@ struct Beans {
 }
 
 impl Beans {
-    fn new() -> Self {
-        Self {
-            categories: Vec::new(),
-            pay_options: Vec::new(),
-        }
-    }
-
     fn inc_category(&mut self, category: &str) {
         self.categories
             .iter_mut()
@@ -205,9 +194,8 @@ impl ScanItem {
         vec.reverse();
         let mut iter = vec.into_iter();
 
-        let mut price = 0;
         let mut price_str = String::new();
-        loop {
+        let price = loop {
             price_str += &iter.next()?;
 
             if !price_str.contains('.') && !price_str.contains(',') {
@@ -217,10 +205,9 @@ impl ScanItem {
             let price_try = price_str.replace(',', ".").parse::<f32>().ok();
 
             if let Some(p) = price_try {
-                price = (p * 100.0) as usize;
-                break;
+                break (p * 100.0) as usize;
             }
-        }
+        };
 
         let name = iter.collect::<Vec<_>>().join(" ");
         if name.contains("\n") {
@@ -283,11 +270,6 @@ fn new_get() -> Template {
     });
 
     Template::render("scan/new", &context)
-}
-
-#[derive(FromForm, Debug)]
-struct NewScan {
-    file: String,
 }
 
 #[post("/new", data = "<file>")]
@@ -447,12 +429,7 @@ fn post_scan(
     scans: &State<Scans>,
     beans: &State<Repository<Beans>>,
 ) -> Option<Redirect> {
-    println!("input {:?}", user_input);
-
-    println!("date: {}", user_input.date);
-
     let zips = user_input.pay.iter().zip(user_input.total.iter());
-
     let payments: Vec<_> = zips.map(|(pay, &total)| Payment { total, pay }).collect();
 
     scans.with_save(|scans| {
@@ -470,7 +447,9 @@ fn post_scan(
         println!("output\n{}", output);
 
         beans.with_save(|beans| {
-            beans.inc_pay(user_input.pay[0]);
+            for pay in user_input.pay.iter() {
+                beans.inc_pay(pay);
+            }
         });
 
         // scans.remove(scan_index);
