@@ -46,17 +46,17 @@ class ImageHandler {
         this.should_resize = true;
 
         this.orig = {
-            top: 0,
-            left: 0,
+            top: 0.0,
+            left: 0.0,
             width: 1,
             height: 1
         };
 
         this.pos = {
-            top: 0,
-            left: 0,
-            width: 1,
-            height: 1
+            top: 0.1,
+            left: 0.1,
+            width: 0.8,
+            height: 0.8
         };
     }
 
@@ -89,6 +89,8 @@ class ImageHandler {
             return;
         }
         this.should_resize = false;
+
+        console.log(this.orig)
 
         const box = this.parent.getBoundingClientRect();
         let image_aspect = this.image.naturalHeight / this.image.naturalWidth;
@@ -244,10 +246,8 @@ function setPicToManipulate() {
 }
 
 
-async function capture_img() {
-    // const data = image_handler.crop();
-    // elements["target"].src = data;
-
+async function capture_img(event) {
+    event.target.disabled = true;
     const {Success: result} = await image_handler.upload();
     console.log(result);
 

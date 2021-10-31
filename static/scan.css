@@ -11,14 +11,22 @@
   width: 100%;
 }
 
-.option + .option {
+.option+.option {
   margin-top: 20px;
 }
 
 .tiles .small {
   font-size: 1.2em;
-  width: 300px;
-  height: 300px;
+  width: 30%;
+  padding-bottom: 30%;
+}
+
+.price {
+  width: min-content;
+}
+
+.price input {
+  width: 75px;
 }
 
 input {
@@ -26,23 +34,50 @@ input {
   padding: 0.2em 0.5em;
 }
 
-.bottom {
-  width: 100%;
+
+.fields {
+  align-items: center;
   display: flex;
   justify-content: space-evenly;
-  align-self: flex-end;
-  margin-top: 40px auto;
+  gap: 0.5rem;
+}
+
+.fields p {
+  width: min-content;
+}
+
+.fields .big {
+  flex-grow: 1;
+}
+
+.top_input {
+  display: flex;
+  flex-direction: column;
+}
+.fields .input {
+  font: inherit;
+}
+
+.bottom {
+  width: 100%;
+  margin-top: auto;
+  margin-bottom: 20px;
 }
 
 .bottom button {
   padding: 10px;
 }
 
-.fields {
-  align-items: baseline;
-  display: flex;
-  justify-content: center;
-  gap: 30px;
+.button {
+  padding: 10px;
+  background-color: #ff7f00;
+  color: #333;
+  font-weight: bold;
+}
+
+.button:active, .button:focus {
+  background-color: #333;
+  color: #ff7f00;
 }
 
 .main {
@@ -53,7 +88,17 @@ input {
   justify-content: space-between;
 }
 
-.content {
+.form {
+  flex-direction: column;
+  gap: 20px;
+  display: flex;
+  max-width: 100%;
+  margin: 20px auto 0 auto;
+  height: 100%;
+  width: 1024px;
+}
+
+.image_content {
   background-position: center;
   background-size: contain;
   background-repeat: no-repeat;
@@ -64,11 +109,35 @@ input {
   position: relative;
 }
 
-.form {
-  flex-direction: column;
-  gap: 20px;
-  display: flex;
-  justify-content: space-evenly;
-  max-width: 1024px;
-  margin: 0 auto;
+thead,
+tfoot {
+    background-color: #3f87a6;
+    color: #fff;
+}
+
+tbody {
+    background-color: #e4f0f5;
+}
+
+caption {
+    padding: 10px;
+    caption-side: bottom;
+}
+
+table {
+    border-collapse: collapse;
+    border: 2px solid rgb(200, 200, 200);
+    letter-spacing: 1px;
+    font-family: sans-serif;
+    font-size: .8rem;
+}
+
+td,
+th {
+    border: 1px solid rgb(190, 190, 190);
+    padding: 5px 10px;
+}
+
+td {
+    text-align: center;
 }

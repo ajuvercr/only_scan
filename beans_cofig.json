@@ -1,24 +1,104 @@
 {
   "categories": [
     [
-      7,
-      "Uitgaven:Eten:Alcohol"
-    ],
-    [
       6,
-      "Uitgaven:Eten:Vlees"
+      "Uitgaven:Eten"
     ],
     [
-      3,
+      4,
       "Uitgaven:Eten:GroentenFruit"
     ],
     [
-      1,
+      3,
       "Uitgaven:Eten:Frisdrank"
     ],
     [
       1,
-      "Uitgaven:Eten:Brood"
+      "Uitgaven:Wonen:Nut:Afval"
+    ],
+    [
+      0,
+      "Uitgaven:Wonen:Schoonmaak"
+    ],
+    [
+      0,
+      "Uitgaven:Wonen:Nut:Water"
+    ],
+    [
+      0,
+      "Uitgaven:Wonen:Nut:Internet"
+    ],
+    [
+      0,
+      "Uitgaven:Wonen:Nut:Gas"
+    ],
+    [
+      0,
+      "Uitgaven:Wonen:Nut:Electriciteit"
+    ],
+    [
+      0,
+      "Uitgaven:Wonen:Meubels"
+    ],
+    [
+      0,
+      "Uitgaven:Wonen:Huur"
+    ],
+    [
+      0,
+      "Uitgaven:Wonen:DoeHetZelf"
+    ],
+    [
+      0,
+      "Uitgaven:Wonen:Apparaat"
+    ],
+    [
+      0,
+      "Uitgaven:Wonen:Apotheek"
+    ],
+    [
+      0,
+      "Uitgaven:Wonen"
+    ],
+    [
+      0,
+      "Uitgaven:Verzekering"
+    ],
+    [
+      0,
+      "Uitgaven:Varia"
+    ],
+    [
+      0,
+      "Uitgaven:Transport:Trein"
+    ],
+    [
+      0,
+      "Uitgaven:Transport:Cambio"
+    ],
+    [
+      0,
+      "Uitgaven:Sport"
+    ],
+    [
+      0,
+      "Uitgaven:Ontspanning"
+    ],
+    [
+      0,
+      "Uitgaven:Onbekend"
+    ],
+    [
+      0,
+      "Uitgaven:Medisch:Apotheek"
+    ],
+    [
+      0,
+      "Uitgaven:Medisch"
+    ],
+    [
+      0,
+      "Uitgaven:Eten:Vlees"
     ],
     [
       0,
@@ -26,21 +106,65 @@
     ],
     [
       0,
-      "Uitgaven:Eten"
+      "Uitgaven:Eten:Restaurant"
+    ],
+    [
+      0,
+      "Uitgaven:Eten:Café"
+    ],
+    [
+      0,
+      "Uitgaven:Eten:Brood"
+    ],
+    [
+      0,
+      "Uitgaven:Eten:Alcohol"
+    ],
+    [
+      0,
+      "Uitgaven:Eten:Afhaal:Pizza"
+    ],
+    [
+      0,
+      "Uitgaven:Eten:Afhaal:Koffie"
+    ],
+    [
+      0,
+      "Uitgaven:Eten:Afhaal:Frieten"
+    ],
+    [
+      0,
+      "Uitgaven:Eten:Afhaal:Chinees"
+    ],
+    [
+      0,
+      "Uitgaven:Eten:Afhaal:Burrito"
+    ],
+    [
+      0,
+      "Uitgaven:Eten:Afhaal:Burgers"
+    ],
+    [
+      0,
+      "Uitgaven:Eten:Afhaal"
+    ],
+    [
+      0,
+      "Uitgaven:Bank"
     ]
   ],
   "pay_options": [
     [
-      0,
+      6,
       "Activa:CA:Arcky:Checking"
     ],
     [
       0,
-      "Maaltijdcheck Arthur"
+      "Maaltijdcheck Nicky"
     ],
     [
       0,
-      "Maaltijdcheck Nicky"
+      "Maaltijdcheck Arthur"
     ]
   ]
 }

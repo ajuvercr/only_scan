@@ -8,7 +8,7 @@
 {{#*inline "page"}}
 
 <div class="main">
-    <div class="content" id="content">
+    <div class="image_content" id="content">
         <div class="handles" id="handles">
             <div class="handle" id="handle0"></div>
             <div class="handle" id="handle1"></div>
@@ -21,7 +21,7 @@
             <input id="myFileInput" type="file" accept="image/*;capture=camera">
         </div>
         <div class="bottom-item">
-            <button onclick="capture_img()">
+            <button onclick="capture_img(event)">
                 Continue!
             </button>
         </div>

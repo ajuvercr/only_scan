@@ -8,47 +8,57 @@
 
 
 <form method="post" class="form" action="#">
-    <p>
-        Scan name:
-        <input name="name" placeholder="Delhaise">
-    </p>
-
-    <div class="fields">
-        <p>
-            Date:
-            <input name="date" type="date" value="{{date}}">
-        </p>
-
-        <p>
-            Rest category:
-            <select id="suggestionList" name="rest">
-                {{#each categories}}
-                <option data-value="{{this}}">{{this}}</option>
-                {{/each}}
-            </select>
-        </p>
-    </div>
-
-    {{#each items}}
-    <p>
-        {{this.name}}: {{this.price}} {{length this.category}}
-    </p>
-    {{/each}}
-
-    <div id="payments">
+    <div class="top_input">
+        <input name="name" placeholder="Scan name">
         <div class="fields">
             <p>
-                Pay method:
-                <select id="paymentList" name="pay[]">
+                Date:
+                <input class="input" name="date" type="date" value="{{date}}">
+            </p>
+
+            <p>
+                Rest category:
+                <select id="suggestionList" class="input" name="rest">
+                    {{#each categories}}
+                    <option value="{{this}}" label="{{length this}}">{{this}}</option>
+                    {{/each}}
+                </select>
+            </p>
+        </div>
+    </div>
+
+
+    <table>
+        <thead>
+            <tr>
+                <th scope="col">Items</th>
+                <th scope="col">Price</th>
+                <th scope="col">Category</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{#each items}}
+            <tr>
+                <th scope="row">{{this.name}}</th>
+                <td>{{this.price}}</td>
+                <td>{{length this.category}}</td>
+            </tr>
+            {{/each}}
+        </tbody>
+    </table>
+
+
+    <div id="payments">
+        <div> Pay method:</div>
+        <div class="fields">
+                <select id="paymentList" class="big" name="pay[]">
                     {{#each pay_options}}
                     <option data-value="{{this}}">{{this}}</option>
                     {{/each}}
                 </select>
-            </p>
-            <p>
-                Total price:
+                <div class="price">
                 <input name="total[]" value="{{total}}">
-            </p>
+                </div>
         </div>
     </div>
 

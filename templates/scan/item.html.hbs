@@ -12,7 +12,7 @@
             <input id="name" name="name" type="text" value="{{item.name}}">
         </p>
 
-        <p>
+        <p class="price">
             Price:
             <input id="price" name="price" type="number" value="{{item.price}}">
         </p>
@@ -21,28 +21,28 @@
     <input id="category" name="category" class="hidden" hidden>
     <div class="tiles">
         {{#each categories_left}}
-        <div class="tile small" onclick='submit("{{this.1}}")'>{{length this.1}}</div>
+        <div class="tile small" onclick='submit("{{this.1}}")'>
+            <p class="content">{{length this.1}}</p>
+        </div>
         {{/each}}
     </div>
 
-    <div class="bottom">
+    <div class="bottom fields">
         <button onclick="delete_f(event)">
             Delete
         </button>
-        <p>
-            Other categories:
-            <input list="suggestionList" id="answerInput" autocomplete="off">
-            <datalist id="suggestionList">
-                {{#each categories_right}}
-                <option data-value="{{this.1}}">{{length this.1}}</option>
-                {{/each}}
-            </datalist>
-        </p>
+
+        <input placeholder="Other categories" list="suggestionList" id="answerInput" autocomplete="off">
 
         <button onclick="submit2()">
             Submit!
         </button>
     </div>
+    <datalist id="suggestionList">
+        {{#each categories_right}}
+        <option data-value="{{this.1}}">{{length this.1}}</option>
+        {{/each}}
+    </datalist>
 </form>
 
 {{/inline}}

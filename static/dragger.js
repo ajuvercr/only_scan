@@ -33,10 +33,14 @@ class Dragger {
         element.addEventListener('touchend', (e) => {
             this.handleTouch(e, ACTIONS.UP)
         });
+        element.addEventListener('touchcancel', (e) => {
+            this.handleTouch(e, ACTIONS.UP)
+        });
         document.addEventListener('mousemove', this.onPointerMove.bind(this))
         element.addEventListener('touchmove', (e) => {
             this.handleTouch(e, ACTIONS.MOVE)
         })
+
     }
 
     onPointerDown(e) {
@@ -49,8 +53,14 @@ class Dragger {
     }
 
     onPointerMove(e) {
+        function abs(x) {
+            return x < 0 ? -1 * x : x;
+        }
+
         if (this.is_dragging) {
             const [x, y] = getEventLocation(e);
+
+            if(abs(this.last_x - x) + abs(this.last_y - y) > 100) return false;
 
             if (this.last_x - x != 0) {
                 this.hor_f(this.last_x - x);
@@ -62,7 +72,9 @@ class Dragger {
 
             this.last_x = x;
             this.last_y = y;
+            return true;
         }
+        return false;
     }
 
     onPointerUp(e) {
@@ -70,16 +82,20 @@ class Dragger {
     }
 
     handleTouch(e, action) {
-        if (e.touches.length == 1) {
+        if (e.touches.length  > 0) {
             switch (action) {
                 case ACTIONS.DOWN:
+                    e.preventDefault();
                     this.onPointerDown(e); break;
 
                 case ACTIONS.UP:
+                    e.preventDefault();
                     this.onPointerUp(e); break;
 
                 case ACTIONS.MOVE:
-                    this.onPointerMove(e); break;
+                    if(this.onPointerMove(e))
+                    e.preventDefault();
+                    break;
             }
         }
     }

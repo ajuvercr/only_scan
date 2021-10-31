@@ -7,6 +7,7 @@ use rocket::serde::{Deserialize, Serialize};
 use rocket::State;
 use rocket::{Build, Rocket};
 use rocket_dyn_templates::Template;
+use std::io::Write;
 
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
@@ -15,7 +16,6 @@ use regex::Regex;
 
 use crate::repository::Repository;
 use crate::util;
-use crate::vision::Resp;
 
 const TEMP_FILE_1: &'static str = "/tmp/file1.jpg";
 const TEMP_FILE_2: &'static str = "/tmp/file2.jpg";
@@ -229,6 +229,8 @@ struct ScanConfigConfig {
     scan_config_location: String,
     #[serde(default = "default_beans_location")]
     bean_config_location: String,
+    #[serde(default = "default_beancount_location")]
+    beancount_location: String,
 }
 
 fn default_location() -> String {
@@ -237,6 +239,10 @@ fn default_location() -> String {
 
 fn default_beans_location() -> String {
     "beans_cofig.json".to_string()
+}
+
+fn default_beancount_location() -> String {
+    "main.bean".to_string()
 }
 
 #[get("/")]
@@ -274,11 +280,10 @@ fn new_get() -> Template {
 
 #[post("/new", data = "<file>")]
 async fn new_post(mut file: TempFile<'_>, scans: &State<Scans>) -> Option<Redirect> {
-    // file.persist_to(TEMP_FILE_1).await.ok()?;
-    // util::turn_image(TEMP_FILE_1, TEMP_FILE_2)?;
+    file.persist_to(TEMP_FILE_1).await.ok()?;
+    util::turn_image(TEMP_FILE_1, TEMP_FILE_2)?;
 
-    // let file = util::ocr(TEMP_FILE_2)?;
-    let file: Resp = util::read_file("resp.json").await?;
+    let file = util::ocr(TEMP_FILE_2)?;
     let part = file.responses.into_iter().next()?;
     let lines = part.lines();
 
@@ -394,7 +399,7 @@ impl<'r, 'b> ScanOutput<'r, 'b> {
     }
 }
 
-use std::fmt;
+use std::{fmt, fs};
 impl fmt::Display for ScanOutput<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let date_str = self.date.format("%Y-%m-%d");
@@ -428,7 +433,13 @@ fn post_scan(
     user_input: Form<FinishScan<'_>>,
     scans: &State<Scans>,
     beans: &State<Repository<Beans>>,
+    config: &State<ScanConfigConfig>,
 ) -> Option<Redirect> {
+    println!(
+        "{:?}", user_input
+    );
+
+    let location = &config.beancount_location;
     let zips = user_input.pay.iter().zip(user_input.total.iter());
     let payments: Vec<_> = zips.map(|(pay, &total)| Payment { total, pay }).collect();
 
@@ -444,7 +455,13 @@ fn post_scan(
             &payments,
         );
 
-        println!("output\n{}", output);
+        let mut file = fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(location)
+            .ok()?;
+
+        writeln!(file, "{}\n", output).ok()?;
 
         beans.with_save(|beans| {
             for pay in user_input.pay.iter() {
@@ -452,7 +469,7 @@ fn post_scan(
             }
         });
 
-        // scans.remove(scan_index);
+        scans.remove(scan_index);
         Redirect::to("/scan").into()
     })
 }
@@ -469,7 +486,7 @@ fn get_one(
         let item = get_foo!(item scan, item_id);
 
         beans.with(|beans| {
-            let (left, right) = beans.categories.split_at(6);
+            let (left, right) = beans.categories.split_at(9);
 
             // let categories: Vec<_> = beans.categories.iter().map(|(_, x)| x).collect();
 
