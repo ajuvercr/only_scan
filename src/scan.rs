@@ -461,7 +461,7 @@ fn post_scan(
             .open(location)
             .ok()?;
 
-        writeln!(file, "{}\n", output).ok()?;
+        writeln!(file, "\n{}", output).ok()?;
 
         beans.with_save(|beans| {
             for pay in user_input.pay.iter() {
