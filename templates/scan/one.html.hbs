@@ -40,7 +40,7 @@
             {{#each items}}
             <tr>
                 <th scope="row">{{this.name}}</th>
-                <td>{{this.price}}</td>
+                <td>{{euro this.price}}</td>
                 <td>{{length this.category}}</td>
             </tr>
             {{/each}}
@@ -57,7 +57,7 @@
                     {{/each}}
                 </select>
                 <div class="price">
-                <input name="total[]" value="{{total}}">
+                <input name="total[]" value="{{euro total}}">
                 </div>
         </div>
     </div>

@@ -66,6 +66,23 @@ fn another_simple_helper(
     Ok(())
 }
 
+fn into_euro(
+    h: &Helper,
+    _: &Handlebars,
+    _: &Context,
+    _: &mut RenderContext,
+    out: &mut dyn Output,
+) -> HelperResult {
+    let param = h.param(0).unwrap();
+
+    let input: u64 = param.value().as_u64().unwrap();
+
+    let pretty = format!("{:.2}", input as f64 / 100.0);
+
+    out.write(&pretty)?;
+    Ok(())
+}
+
 #[launch]
 fn rocket() -> _ {
     let statics: Vec<Route> = serve::StaticFiles::new("static", serve::Options::DotFiles).into();
@@ -81,5 +98,7 @@ fn rocket() -> _ {
         engines
             .handlebars
             .register_helper("length", Box::new(another_simple_helper));
+        engines.handlebars
+            .register_helper("euro", Box::new(into_euro));
     }))
 }

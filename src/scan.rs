@@ -79,7 +79,7 @@ impl Beans {
 struct CategoriseForm<'r> {
     category: &'r str,
     name: &'r str,
-    price: usize,
+    price: f32,
 }
 
 type Scans = Repository<Vec<Scan>>;
@@ -345,7 +345,7 @@ fn get_scan(
 #[derive(FromForm, Debug, Clone)]
 struct FinishScan<'r> {
     name: &'r str,
-    total: Vec<usize>,
+    total: Vec<f64>,
     rest: &'r str,
     pay: Vec<&'r str>,
     date: time::Date,
@@ -414,7 +414,7 @@ impl fmt::Display for ScanOutput<'_, '_> {
         }
 
         for (k, v) in self.items.iter() {
-            writeln!(f, "    {} {:.2}", k, *v as f32 / 100.0)?;
+            writeln!(f, "    {} {:.2}", k, *v as f64 / 100.0)?;
         }
 
         if self.items.values().sum::<usize>()
@@ -441,7 +441,7 @@ fn post_scan(
 
     let location = &config.beancount_location;
     let zips = user_input.pay.iter().zip(user_input.total.iter());
-    let payments: Vec<_> = zips.map(|(pay, &total)| Payment { total, pay }).collect();
+    let payments: Vec<_> = zips.map(|(pay, &total)| Payment { total: (total * 100.0) as usize, pay }).collect();
 
     scans.with_save(|scans| {
         let scan_index = scans.iter().position(|x| x.id == scan_id)?;
@@ -522,7 +522,7 @@ fn post_one(
             scan.categorise(
                 item_id,
                 user_input.name,
-                user_input.price,
+                (user_input.price * 100.0) as usize,
                 user_input.category,
             );
         }
