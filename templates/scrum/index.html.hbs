@@ -1,0 +1,18 @@
+{{#*inline "headers"}}
+    <title>Scrum | Only_Scan</title>
+    <link rel="stylesheet" href="/scrum.css">
+{{/inline}}
+
+{{#*inline "page"}}
+
+    <div class="scrum list">
+            {{#each stories}}
+                {{> scrum/partials/story }}
+            {{/each}}
+        </ul>
+    </div>
+
+
+{{/inline}}
+
+{{> base}}

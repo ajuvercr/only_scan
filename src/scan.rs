@@ -435,13 +435,16 @@ fn post_scan(
     beans: &State<Repository<Beans>>,
     config: &State<ScanConfigConfig>,
 ) -> Option<Redirect> {
-    println!(
-        "{:?}", user_input
-    );
+    println!("{:?}", user_input);
 
     let location = &config.beancount_location;
     let zips = user_input.pay.iter().zip(user_input.total.iter());
-    let payments: Vec<_> = zips.map(|(pay, &total)| Payment { total: (total * 100.0) as usize, pay }).collect();
+    let payments: Vec<_> = zips
+        .map(|(pay, &total)| Payment {
+            total: (total * 100.0) as usize,
+            pay,
+        })
+        .collect();
 
     scans.with_save(|scans| {
         let scan_index = scans.iter().position(|x| x.id == scan_id)?;

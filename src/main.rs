@@ -6,10 +6,12 @@ extern crate regex;
 extern crate rocket_dyn_templates;
 extern crate time;
 extern crate uuid;
+extern crate cool_id_generator;
 
 mod desk;
 pub mod repository;
 mod scan;
+mod scrum;
 mod serve;
 pub mod sorted_list;
 pub mod util;
@@ -92,13 +94,14 @@ fn rocket() -> _ {
         .mount("/", statics);
     let rocket = desk::fuel(rocket);
     let rocket = scan::fuel(rocket);
-
+    let rocket = scrum::fuel(rocket);
     // This also adds the handlebars fairing
     rocket.attach(Template::custom(|engines| {
         engines
             .handlebars
             .register_helper("length", Box::new(another_simple_helper));
-        engines.handlebars
+        engines
+            .handlebars
             .register_helper("euro", Box::new(into_euro));
     }))
 }

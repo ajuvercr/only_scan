@@ -8,7 +8,7 @@
 
 <div class="desks">
     {{#each desks}}
-    <div class="desk option" onclick="go_brr( $event, '{{ this.id }}' )">
+    <div class="desk option" onclick="go_brr( event, '{{ this.id }}' )">
         <span>{{this.name}}: {{this.amount}}</span>
         <a href="/desk/{{this.id}}/delete"></a>
     </div>

@@ -91,3 +91,8 @@ pub fn ocr(input: &str) -> Option<vision::Resp> {
 
     serde_json::from_str(&str).ok()
 }
+
+pub fn id() -> String {
+    use cool_id_generator::{get_id, Size};
+    get_id(Size::Medium)
+}

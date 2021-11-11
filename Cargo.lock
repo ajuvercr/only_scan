@@ -191,6 +191,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cool-id-generator"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3051b177f6eb32ba5045c187fe84dcfb8e76a4d4aee2ca42945634b28b932d6f"
+dependencies = [
+ "rand",
+]
+
+[[package]]
 name = "devise"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -886,6 +895,7 @@ name = "only_scan"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "cool-id-generator",
  "rand",
  "regex",
  "rocket",
