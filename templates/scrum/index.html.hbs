@@ -4,15 +4,17 @@
 {{/inline}}
 
 {{#*inline "page"}}
-
     <div class="scrum list">
-            {{#each stories}}
-                {{> scrum/partials/story }}
-            {{/each}}
-        </ul>
+        {{#each stories}}
+            {{> scrum/partials/story }}
+        {{/each}}
     </div>
 
-
+    <div class="scrum list">
+        {{#each epics}}
+            {{> scrum/partials/story }}
+        {{/each}}
+    </div>
 {{/inline}}
 
 {{> base}}

@@ -1,12 +1,12 @@
 #[macro_use]
 extern crate rocket;
 extern crate chrono;
+extern crate cool_id_generator;
 extern crate rand;
 extern crate regex;
 extern crate rocket_dyn_templates;
 extern crate time;
 extern crate uuid;
-extern crate cool_id_generator;
 
 mod desk;
 pub mod repository;
@@ -21,69 +21,21 @@ pub mod vision;
 mod tests;
 
 use rocket::Route;
-use rocket_dyn_templates::Template;
-
-use rocket::serde::Serialize;
-
-use rocket_dyn_templates::handlebars::{
-    Context, Handlebars, Helper, HelperResult, JsonRender, Output, RenderContext,
-};
+use rocket_dyn_templates::{handlebars::handlebars_helper, Template};
 
 #[get("/")]
 async fn index() -> Template {
-    #[derive(Serialize)]
-    struct IndexContext {
-        firstname: String,
-        lastname: String,
-    }
-
-    let context = IndexContext {
-        firstname: String::from("Arthur"),
-        lastname: String::from("Meeee"),
-    };
-
-    Template::render("index", &context)
+    Template::render("index", ())
 }
 
-fn another_simple_helper(
-    h: &Helper,
-    _: &Handlebars,
-    _: &Context,
-    _: &mut RenderContext,
-    out: &mut dyn Output,
-) -> HelperResult {
-    let param = h.param(0).unwrap();
-
-    let input: String = param.value().render();
-
-    println!("input {}", input);
-
-    let pretty = if let Some(rfind) = input.rfind(':') {
-        input.get(rfind + 1..).unwrap()
-    } else {
-        input.as_ref()
-    };
-
-    out.write(pretty)?;
-    Ok(())
-}
-
-fn into_euro(
-    h: &Helper,
-    _: &Handlebars,
-    _: &Context,
-    _: &mut RenderContext,
-    out: &mut dyn Output,
-) -> HelperResult {
-    let param = h.param(0).unwrap();
-
-    let input: u64 = param.value().as_u64().unwrap();
-
-    let pretty = format!("{:.2}", input as f64 / 100.0);
-
-    out.write(&pretty)?;
-    Ok(())
-}
+handlebars_helper!(shorten_cat: |x: str|
+    x.rfind(':').and_then(|rfind| x.get(rfind + 1..)).unwrap_or(x)
+);
+handlebars_helper!(into_euro: |x: u64| format!("{:.2}", x as f64 / 100.0));
+handlebars_helper!(eq: |x: str, y: str| x == y);
+handlebars_helper!(lower: |x: str| x.to_lowercase());
+handlebars_helper!(has_status_next: |x: str| scrum::has_next(x));
+handlebars_helper!(has_status_previous: |x: str| scrum::has_previous(x));
 
 #[launch]
 fn rocket() -> _ {
@@ -97,11 +49,13 @@ fn rocket() -> _ {
     let rocket = scrum::fuel(rocket);
     // This also adds the handlebars fairing
     rocket.attach(Template::custom(|engines| {
-        engines
-            .handlebars
-            .register_helper("length", Box::new(another_simple_helper));
-        engines
-            .handlebars
-            .register_helper("euro", Box::new(into_euro));
+        let handles = &mut engines.handlebars;
+        handles.register_helper("eq", Box::new(eq));
+        handles.register_helper("shorten_cat", Box::new(shorten_cat));
+        handles.register_helper("euro", Box::new(into_euro));
+        handles.register_helper("lower", Box::new(lower));
+
+        handles.register_helper("has_status_next", Box::new(has_status_next));
+        handles.register_helper("has_status_previous", Box::new(has_status_previous));
     }))
 }

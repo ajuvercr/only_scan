@@ -87,7 +87,7 @@ a {
   }
 }
 
-.tiles a, .tiles p {
+.tile a, .tile p {
   color: inherit;
   position: absolute;
   top: 50%;

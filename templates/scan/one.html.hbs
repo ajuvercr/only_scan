@@ -20,7 +20,7 @@
                 Rest category:
                 <select id="suggestionList" class="input" name="rest">
                     {{#each categories}}
-                    <option value="{{this}}" label="{{length this}}">{{this}}</option>
+                    <option value="{{this}}" label="{{shorten_cat this}}">{{this}}</option>
                     {{/each}}
                 </select>
             </p>
@@ -41,7 +41,7 @@
             <tr>
                 <th scope="row">{{this.name}}</th>
                 <td>{{euro this.price}}</td>
-                <td>{{length this.category}}</td>
+                <td>{{shorten_cat this.category}}</td>
             </tr>
             {{/each}}
         </tbody>

@@ -22,7 +22,7 @@
     <div class="tiles">
         {{#each categories_left}}
         <div class="tile small" onclick='submit("{{this.1}}")'>
-            <p class="content">{{length this.1}}</p>
+            <p class="content">{{shorten_cat this.1}}</p>
         </div>
         {{/each}}
     </div>
@@ -40,7 +40,7 @@
     </div>
     <datalist id="suggestionList">
         {{#each categories_right}}
-        <option data-value="{{this.1}}">{{length this.1}}</option>
+        <option data-value="{{this.1}}">{{shorten_cat this.1}}</option>
         {{/each}}
     </datalist>
 </form>

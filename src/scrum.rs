@@ -1,4 +1,5 @@
 use rocket::fairing::AdHoc;
+use rocket::response::Redirect;
 use rocket::serde::{Deserialize, Serialize};
 use rocket::{Build, Rocket, State};
 use rocket_dyn_templates::Template;
@@ -56,6 +57,34 @@ enum Status {
     Todo,
     Doing,
     Done,
+}
+
+impl Status {
+    fn right(self) -> Self {
+        use Status::*;
+        match self {
+            Todo => Doing,
+            Doing => Done,
+            Done => Done,
+        }
+    }
+
+    fn left(self) -> Self {
+        use Status::*;
+        match self {
+            Todo => Todo,
+            Doing => Todo,
+            Done => Doing,
+        }
+    }
+}
+
+pub fn has_next(status: &str) -> bool {
+    return status != "Done";
+}
+
+pub fn has_previous(status: &str) -> bool {
+    return status != "Todo";
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -121,15 +150,43 @@ fn get_one() -> String {
 
 #[get("/")]
 fn get(scrum: &State<Repo<Scrum>>) -> Template {
-    scrum.with(|scrum| {
-        Template::render("scrum/index", scrum)
-    })
+    scrum.with(|scrum| Template::render("scrum/index", scrum))
     // String::from("hallo")
+}
+
+#[post("/<id>/left")]
+fn do_left(scrum: &State<Repo<Scrum>>, id: &str) -> Redirect {
+    scrum.with_save(|scrum| {
+        if let Some(story) = scrum
+            .stories
+            .iter_mut()
+            .filter(|story| story.id == id)
+            .next()
+        {
+            story.status = story.status.left();
+        }
+    });
+    Redirect::to("/scrum")
+}
+
+#[post("/<id>/right")]
+fn do_right(scrum: &State<Repo<Scrum>>, id: &str) -> Redirect {
+    scrum.with_save(|scrum| {
+        if let Some(story) = scrum
+            .stories
+            .iter_mut()
+            .filter(|story| story.id == id)
+            .next()
+        {
+            story.status = story.status.right();
+        }
+    });
+    Redirect::to("/scrum")
 }
 
 pub fn fuel(rocket: Rocket<Build>) -> Rocket<Build> {
     rocket
-        .mount("/scrum", routes![get, get_one])
+        .mount("/scrum", routes![get, get_one, do_left, do_right])
         .attach(AdHoc::config::<ScrumConfig>())
         .attach(Repo::<Scrum>::adhoc(
             "scrum",
