@@ -1,0 +1,22 @@
+<div class="{{lower this.status}} story">
+    <form action="/scrum/{{this.id}}/left" method="POST" class="arrow-form">
+        <a href="#" onclick="this.parentNode.submit()"
+            class="{{#if (has_status_previous this.status)}}arrow prev{{/if}}"> </a>
+    </form>
+    <div class="content">
+        <div class="title">
+            <img src="{{this.img_url}}" height="64">
+            <h3>
+                {{this.title}}
+            </h3>
+        </div>
+        <p>
+            {{this.content}}
+        </p>
+    </div>
+
+    <form action="/scrum/{{this.id}}/right" method="POST" class="arrow-form">
+        <a href="#" onclick="this.parentNode.submit()"
+            class="{{#if (has_status_next this.status)}}arrow next{{/if}}"></a>
+    </form>
+</div>

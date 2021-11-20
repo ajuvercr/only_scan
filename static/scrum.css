@@ -81,3 +81,8 @@
   transform: rotate(135deg);
   right: 0;
 }
+
+.title {
+  display: flex;
+  gap: 32px;
+}

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use rocket::fairing::AdHoc;
 use rocket::response::Redirect;
 use rocket::serde::{Deserialize, Serialize};
@@ -9,8 +11,8 @@ use crate::util;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 struct Scrum {
-    epics: Vec<Epic>,
-    stories: Vec<Story>,
+    epics: HashMap<String, Epic>,
+    stories: HashMap<String, Story>,
 }
 
 impl Scrum {
@@ -20,35 +22,39 @@ impl Scrum {
             "In the comming years this epic should be handled successfully",
             Status::Doing,
         );
-        Self {
-            stories: vec![
-                Story::new(
-                    "small story",
-                    "Some stories are small, others are big",
-                    Status::Doing,
-                    &epic,
-                ),
-                Story::new(
-                    "to big story",
-                    "Some stories are small, others are big",
-                    Status::Todo,
-                    &epic,
-                ),
-                Story::new(
-                    "small story",
-                    "Some stories are small, others are big",
-                    Status::Done,
-                    &epic,
-                ),
-                Story::new(
-                    ":( story",
-                    "Some stories are small, others are big",
-                    Status::Doing,
-                    None,
-                ),
-            ],
-            epics: vec![epic],
-        }
+        let stories = vec![
+            Story::new(
+                "small story",
+                "Some stories are small, others are big",
+                Status::Doing,
+                &epic,
+            ),
+            Story::new(
+                "to big story",
+                "Some stories are small, others are big",
+                Status::Todo,
+                &epic,
+            ),
+            Story::new(
+                "small story",
+                "Some stories are small, others are big",
+                Status::Done,
+                &epic,
+            ),
+            Story::new(
+                ":( story",
+                "Some stories are small, others are big",
+                Status::Doing,
+                None,
+            ),
+        ]
+        .into_iter()
+        .map(|x| (x.id.clone(), x))
+        .collect();
+
+        let epics = vec![(epic.id.clone(), epic)].into_iter().collect();
+
+        Self { stories, epics }
     }
 }
 
@@ -93,15 +99,19 @@ struct Epic {
     title: String,
     content: String,
     status: Status,
+    img_url: String,
 }
 
 impl Epic {
+    pub const DEFAULT_IMG: &'static str = "/images/default.png";
+
     pub fn new<S: Into<Option<Status>>>(title: &str, content: &str, status: S) -> Self {
         Self {
             id: util::id(),
             title: title.to_string(),
             content: content.to_string(),
             status: status.into().unwrap_or(Status::Todo),
+            img_url: Epic::DEFAULT_IMG.to_string(),
         }
     }
 }
@@ -150,19 +160,20 @@ fn get_one() -> String {
 
 #[get("/")]
 fn get(scrum: &State<Repo<Scrum>>) -> Template {
+    // let ctx = scrum.with(|scrum| {
+    //     rocket::serde::json::serde_json::json!({
+    //         "stories": &scrum.stories.iter().map(),
+    //         "epics": &scrum.epics,
+    //     })
+    // });
+
     scrum.with(|scrum| Template::render("scrum/index", scrum))
-    // String::from("hallo")
 }
 
 #[post("/<id>/left")]
 fn do_left(scrum: &State<Repo<Scrum>>, id: &str) -> Redirect {
     scrum.with_save(|scrum| {
-        if let Some(story) = scrum
-            .stories
-            .iter_mut()
-            .filter(|story| story.id == id)
-            .next()
-        {
+        if let Some(story) = scrum.stories.get_mut(id) {
             story.status = story.status.left();
         }
     });
@@ -172,12 +183,7 @@ fn do_left(scrum: &State<Repo<Scrum>>, id: &str) -> Redirect {
 #[post("/<id>/right")]
 fn do_right(scrum: &State<Repo<Scrum>>, id: &str) -> Redirect {
     scrum.with_save(|scrum| {
-        if let Some(story) = scrum
-            .stories
-            .iter_mut()
-            .filter(|story| story.id == id)
-            .next()
-        {
+        if let Some(story) = scrum.stories.get_mut(id) {
             story.status = story.status.right();
         }
     });

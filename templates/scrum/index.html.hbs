@@ -1,20 +1,20 @@
 {{#*inline "headers"}}
-    <title>Scrum | Only_Scan</title>
-    <link rel="stylesheet" href="/scrum.css">
+<title>Scrum | Only_Scan</title>
+<link rel="stylesheet" href="/scrum.css">
 {{/inline}}
 
 {{#*inline "page"}}
-    <div class="scrum list">
-        {{#each stories}}
-            {{> scrum/partials/story }}
-        {{/each}}
-    </div>
+<div class="scrum list">
+    {{#each stories}}
+    {{> scrum/partials/story }}
+    {{/each}}
+</div>
 
-    <div class="scrum list">
-        {{#each epics}}
-            {{> scrum/partials/story }}
-        {{/each}}
-    </div>
+<div class="scrum list">
+    {{#each epics}}
+    {{> scrum/partials/epic }}
+    {{/each}}
+</div>
 {{/inline}}
 
 {{> base}}
