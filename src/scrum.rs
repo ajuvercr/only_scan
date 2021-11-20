@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use rocket::fairing::AdHoc;
 use rocket::response::Redirect;
+use rocket::serde::json::{json, serde_json, Value};
 use rocket::serde::{Deserialize, Serialize};
 use rocket::{Build, Rocket, State};
 use rocket_dyn_templates::Template;
@@ -142,6 +143,27 @@ impl Story {
             epic: epic.into().map(|epic| epic.id.clone()),
         }
     }
+
+    pub fn to_value(&self, epics: &HashMap<String, Epic>) -> Value {
+        let mut value = match serde_json::to_value(self) {
+            Ok(Value::Object(inner)) => inner,
+            _ => panic!(),
+        };
+
+        if let Some(ref epic) = self.epic {
+            let v = rocket::serde::json::serde_json::json!({
+                "id": &epic,
+                "img_url": &epics[epic].img_url
+            });
+
+            value.insert(
+                "epic".to_string(),
+                v,
+            );
+        }
+
+        Value::Object(value)
+    }
 }
 
 #[derive(Deserialize, Debug)]
@@ -160,14 +182,14 @@ fn get_one() -> String {
 
 #[get("/")]
 fn get(scrum: &State<Repo<Scrum>>) -> Template {
-    // let ctx = scrum.with(|scrum| {
-    //     rocket::serde::json::serde_json::json!({
-    //         "stories": &scrum.stories.iter().map(),
-    //         "epics": &scrum.epics,
-    //     })
-    // });
+    let ctx = scrum.with(|scrum| {
+        rocket::serde::json::serde_json::json!({
+            "stories": &scrum.stories.values().map(|s| s.to_value(&scrum.epics)).collect::<Vec<_>>(),
+            "epics": &scrum.epics,
+        })
+    });
 
-    scrum.with(|scrum| Template::render("scrum/index", scrum))
+    Template::render("scrum/index", ctx)
 }
 
 #[post("/<id>/left")]

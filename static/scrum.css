@@ -1,3 +1,10 @@
+:root {
+  --done: cyan;
+  --todo: blue;
+  --doing: brown;
+}
+
+
 .list {
   margin: auto;
   display: grid;
@@ -13,20 +20,54 @@
 .todo {
   grid-column-start: 1;
   grid-column-end: 2;
-  background-color: blue;
+  background-color: var(--todo);
 }
 
 .doing {
   grid-column-start: 2;
   grid-column-end: 3;
-  background-color: red;
+  background-color: var(--doing);
 }
 
 .done {
   grid-column-start: 3;
   grid-column-end: 4;
-  background-color: cyan;
+  background-color: var(--done);
 }
+
+.scrum header {
+  justify-self: start;
+  background-color: unset;
+  position: relative;
+  margin-left: 1em;
+  margin-bottom: 1em;
+  font-size: 2em;
+  font-weight: bold;
+  font-family: "Lucida Console", Courier, monospace;
+}
+
+.scrum header::after {
+  content: '';
+  position: absolute;
+  left: -20%;
+  top: 80%;
+  width: 140%;
+  height: 0.8em;
+  transform: skew(-30deg);
+  background: lime;
+}
+
+header.done::after {
+  background:var(--done);
+}
+
+header.doing::after {
+  background:var(--doing);
+}
+header.todo::after {
+  background:var(--todo);
+}
+
 
 .story {
   display: flex;
@@ -85,4 +126,29 @@
 .title {
   display: flex;
   gap: 32px;
+}
+
+.sidebar {
+  position: absolute;
+  left: 100vw;
+  top: 0;
+  height: 100%;
+
+  background-color: whitesmoke;
+
+  transition-property: transform;
+  transition-duration: 0.3s;
+}
+
+.sidebar.open {
+  transform: translateX(-100%);
+}
+
+.sidebar button {
+  transform: translateX(-100%);
+}
+
+.main {
+  flex-grow: 1;
+  position: relative;
 }
