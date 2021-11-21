@@ -153,13 +153,10 @@ impl Story {
         if let Some(ref epic) = self.epic {
             let v = rocket::serde::json::serde_json::json!({
                 "id": &epic,
-                "img_url": &epics[epic].img_url
+                "img_url": &epics[epic].img_url.clone()
             });
 
-            value.insert(
-                "epic".to_string(),
-                v,
-            );
+            value.insert("epic".to_string(), v);
         }
 
         Value::Object(value)
@@ -175,9 +172,15 @@ fn default_location() -> String {
     "scrum.json".to_string()
 }
 
-#[get("/someid")]
-fn get_one() -> String {
-    String::from("hallo")
+#[get("/<id>")]
+fn get_one(scrum: &State<Repo<Scrum>>, id: &str) -> Template {
+    println!("trying id {}", id);
+    let ctx = scrum.with(|scrum| {
+        println!("{:?}", scrum);
+        scrum.stories[id].to_value(&scrum.epics)
+    });
+    println!("ctx {:?}", ctx);
+    Template::render("scrum/detail", ctx)
 }
 
 #[get("/")]
@@ -185,7 +188,7 @@ fn get(scrum: &State<Repo<Scrum>>) -> Template {
     let ctx = scrum.with(|scrum| {
         rocket::serde::json::serde_json::json!({
             "stories": &scrum.stories.values().map(|s| s.to_value(&scrum.epics)).collect::<Vec<_>>(),
-            "epics": &scrum.epics,
+            "epics": scrum.epics.clone(),
         })
     });
 

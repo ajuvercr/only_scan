@@ -21,7 +21,7 @@ pub mod vision;
 mod tests;
 
 use rocket::Route;
-use rocket_dyn_templates::{handlebars::handlebars_helper, Template};
+use rocket_dyn_templates::{Template, handlebars::{handlebars_helper}};
 
 #[get("/")]
 async fn index() -> Template {
@@ -36,6 +36,14 @@ handlebars_helper!(eq: |x: str, y: str| x == y);
 handlebars_helper!(lower: |x: str| x.to_lowercase());
 handlebars_helper!(has_status_next: |x: str| scrum::has_next(x));
 handlebars_helper!(has_status_previous: |x: str| scrum::has_previous(x));
+handlebars_helper!(image: |name: Json| {
+    if let rocket::serde::json::Value::String(name) = name {
+        format!("/static/{}", name)
+    } else {
+        String::from("/static/images/default.png")
+
+    }
+});
 
 #[launch]
 fn rocket() -> _ {
@@ -43,7 +51,7 @@ fn rocket() -> _ {
 
     let rocket = rocket::build()
         .mount("/", routes![index])
-        .mount("/", statics);
+        .mount("/static", statics);
     let rocket = desk::fuel(rocket);
     let rocket = scan::fuel(rocket);
     let rocket = scrum::fuel(rocket);
@@ -54,6 +62,7 @@ fn rocket() -> _ {
         handles.register_helper("shorten_cat", Box::new(shorten_cat));
         handles.register_helper("euro", Box::new(into_euro));
         handles.register_helper("lower", Box::new(lower));
+        handles.register_helper("image", Box::new(image));
 
         handles.register_helper("has_status_next", Box::new(has_status_next));
         handles.register_helper("has_status_previous", Box::new(has_status_previous));

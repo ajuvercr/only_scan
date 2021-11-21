@@ -1,7 +1,9 @@
+use std::cell::RefMut;
 use std::ops::DerefMut;
 use std::sync::{Arc, Mutex};
 
 use rocket::fairing::AdHoc;
+use rocket::futures::lock::MutexGuard;
 use rocket::serde::json::serde_json::{self};
 use rocket::serde::{Deserialize, Serialize};
 use std::fs;
@@ -34,6 +36,17 @@ impl<T> Repository<T> {
     }
 }
 
+macro_rules! get {
+    ($i:expr) => {
+        match ($i.try_lock()) {
+            Err(e) => {
+                println!("Poison error {}", e.to_string());
+                panic!("aaaaaaahhhhhh");
+            },
+            Ok(t) => t
+        }
+    };
+}
 impl<T> Repository<T>
 where
     T: for<'de> Deserialize<'de> + Serialize,
@@ -60,7 +73,8 @@ where
         F: FnOnce(&mut T) -> R,
     {
         let out = {
-            let mut t = self.inner.lock().expect("Failed unlock rocket state");
+            let mut t = get!(self.inner);
+            // let mut t = self.inner.lock().expect("Failed unlock rocket state");
             func(t.deref_mut())
         };
         self.save();
@@ -71,7 +85,7 @@ where
     where
         F: FnOnce(&mut T) -> R,
     {
-        let mut t = self.inner.lock().expect("Failed unlock rocket state");
+        let mut t = get!(self.inner);
         func(t.deref_mut())
     }
 }

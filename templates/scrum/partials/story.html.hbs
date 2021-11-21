@@ -1,6 +1,6 @@
 <div class="{{lower this.status}} story">
   <div class="edit">
-    <button class="button-54" onclick='console.log("clicked")'>edit</button>
+    <button class="button-54" onclick='window.location.href="/scrum/{{this.id}}"'>edit</button>
   </div>
   <form action="/scrum/{{this.id}}/left" method="POST" class="arrow-form">
     <a href="#" onclick="this.parentNode.submit()" class="{{#if (has_status_previous this.status)}}arrow prev{{/if}}">
@@ -8,7 +8,7 @@
   </form>
   <div class="content">
     <div class="title">
-      <img src="{{this.epic.img_url}}" height="64">
+      <img src="{{image this.epic.img_url}}" height="64">
       <h3>
         {{this.title}}
       </h3>
