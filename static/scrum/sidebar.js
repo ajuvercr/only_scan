@@ -9,3 +9,8 @@ function toggle_sidebar() {
         sidebar.classList.remove("open");
     }
 }
+
+function expand_story(event) {
+    console.log(event)
+    event.target.classList.add("expanded");
+}

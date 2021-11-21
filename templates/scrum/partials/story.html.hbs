@@ -1,4 +1,7 @@
 <div class="{{lower this.status}} story">
+  <div class="edit">
+    <button class="button-54" onclick='console.log("clicked")'>edit</button>
+  </div>
   <form action="/scrum/{{this.id}}/left" method="POST" class="arrow-form">
     <a href="#" onclick="this.parentNode.submit()" class="{{#if (has_status_previous this.status)}}arrow prev{{/if}}">
     </a>

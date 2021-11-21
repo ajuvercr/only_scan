@@ -15,6 +15,7 @@
   place-items: center;
   grid-auto-flow: column;
   max-width: 90%;
+  width: max-content;
 }
 
 .todo {
@@ -58,21 +59,42 @@
 }
 
 header.done::after {
-  background:var(--done);
+  background: var(--done);
 }
 
 header.doing::after {
-  background:var(--doing);
+  background: var(--doing);
 }
+
 header.todo::after {
-  background:var(--todo);
+  background: var(--todo);
 }
 
 
 .story {
+  position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+.story .edit {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
+  opacity: 0;
+  transition-property: all;
+  transition-duration: 0.3s;
+}
+
+.story:hover .edit {
+  opacity: 1;
+}
+
+.story.expanded {
+  background-color: blueviolet !important;
 }
 
 .arrow-form {
@@ -130,7 +152,7 @@ header.todo::after {
 
 .sidebar {
   position: absolute;
-  left: 100vw;
+  right: 0;
   top: 0;
   height: 100%;
 
@@ -138,10 +160,12 @@ header.todo::after {
 
   transition-property: transform;
   transition-duration: 0.3s;
+  transform: translateX(100%);
+
 }
 
 .sidebar.open {
-  transform: translateX(-100%);
+  transform: unset;
 }
 
 .sidebar button {
@@ -151,4 +175,41 @@ header.todo::after {
 .main {
   flex-grow: 1;
   position: relative;
+}
+
+/* CSS */
+.button-54 {
+  font-family: "Open Sans", sans-serif;
+  font-size: 16px;
+  letter-spacing: 2px;
+  transition: all 0.2s;
+  text-decoration: none;
+  text-transform: uppercase;
+  color: #000;
+  cursor: pointer;
+  border: 3px solid;
+  padding: 0.25em 0.5em;
+  box-shadow: 1px 1px 0px 0px, 2px 2px 0px 0px, 3px 3px 0px 0px, 4px 4px 0px 0px, 5px 5px 0px 0px;
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+.button-54:active {
+  box-shadow: 0px 0px 0px 0px;
+  top: 5px;
+  left: 5px;
+}
+
+.sidebar .button-54:active {
+  top: 0;
+  left: 0;
+}
+
+
+@media (min-width: 768px) {
+  .button-54 {
+    padding: 0.25em 0.75em;
+  }
 }
