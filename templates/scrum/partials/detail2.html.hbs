@@ -1,0 +1,28 @@
+{{#*inline "headers"}}
+<title>Scrum | Only_Scan</title>
+<link rel="stylesheet" href="/scrum.css">
+{{/inline}}
+
+{{#*inline "page"}}
+<div class="{{lower this.status}} story">
+  <form action="/scrum/{{this.id}}/left" method="POST" class="arrow-form">
+    <a href="#" onclick="this.parentNode.submit()" class="{{#if (has_status_previous this.status)}}arrow prev{{/if}}">
+    </a>
+  </form>
+  <div class="content">
+    <p>
+      {{this.title}}
+    </p>
+    <p>
+      {{this.content}}
+    </p>
+  </div>
+
+  <form action="/scrum/{{this.id}}/right" method="POST" class="arrow-form">
+    <a href="#" onclick="this.parentNode.submit()" class="{{#if (has_status_next this.status)}}arrow next{{/if}}"></a>
+  </form>
+</div>
+
+{{/inline}}
+
+{{> base}}

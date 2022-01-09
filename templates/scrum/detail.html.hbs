@@ -1,11 +1,24 @@
 {{#*inline "headers"}}
 <title>Scrum | Only_Scan</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css">
 <link rel="stylesheet" href="/static/scrum.css">
+<script src="/static/scrum/sidebar.js"></script>
 {{/inline}}
 
 {{#*inline "page"}}
-<div class="main">
-    {{this.title}}
+
+<div class="card">
+    <div class="{{lower this.status}} story">
+        <div class="content">
+            <div class="field is-horizontal">
+                <span class="field-label is-large">Title: </span>
+                <input class="input is-large is-static" type="text" value="{{this.title}}">
+            </div>
+            <textarea class="textarea">
+                {{this.content}}
+            </textarea>
+        </div>
+    </div>
 </div>
 
 {{/inline}}

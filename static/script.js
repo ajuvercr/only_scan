@@ -231,7 +231,7 @@ async function main() {
 
     const image = new Image();
     image.onload = () => image_handler.set_image(image);
-    image.src = "/test.jpg";
+    image.src = "/static/test.jpg";
 }
 
 
