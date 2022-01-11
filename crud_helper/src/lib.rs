@@ -137,7 +137,7 @@ fn builder_f(inp: &DeriveInput, new_ident: &syn::Ident) -> Result<TokenStream2> 
       }
 
       impl #generics #indent #generics {
-          pub fn builder() -> #new_ident {
+          pub fn builder() -> #new_ident #generics {
             #new_ident::new()
           }
       }

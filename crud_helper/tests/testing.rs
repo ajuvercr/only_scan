@@ -11,6 +11,11 @@ struct Story {
     name: String,
 }
 
+#[derive(Crud, Clone)]
+struct Wrapper<T> {
+    inner: T,
+}
+
 #[test]
 fn it_works() {
     let mut story = Story {
@@ -27,4 +32,15 @@ fn it_works() {
 
     let result = 2 + 2;
     assert_eq!(result, 4);
+}
+
+#[test]
+fn test_generics() {
+    let mut first = Wrapper { inner: 0 };
+    let builder = Wrapper::builder().with_inner(42);
+
+    assert_eq!(first.inner, 0);
+    builder.update(&mut first);
+
+    assert_eq!(first.inner, 42);
 }
