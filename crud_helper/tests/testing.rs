@@ -4,7 +4,8 @@ pub trait Builder<T> {
     fn with(self, t: T) -> Self;
 }
 
-#[derive(Crud, Clone)]
+#[derive(Crud)]
+#[inner(Clone, Debug)]
 struct Story {
     #[id]
     id: String,
@@ -24,6 +25,7 @@ fn it_works() {
     };
 
     let builder = Story::builder().with_name("test2".into());
+    println!("{:?}", builder);
 
     assert_eq!(story.name, String::from("test"));
     builder.update(&mut story);

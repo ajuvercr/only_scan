@@ -1,16 +1,23 @@
 #![feature(proc_macro_internals)]
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
-use quote::quote;
+use quote::{quote, ToTokens};
 use syn::{
     parse::Error, punctuated::Punctuated, spanned::Spanned, token::Comma, DeriveInput, Field,
 };
 
 type Result<T> = std::result::Result<T, Error>;
 
-#[proc_macro_derive(Crud, attributes(id))]
+#[proc_macro_derive(Crud, attributes(inner, id))]
 pub fn foo(input: TokenStream) -> TokenStream {
     let ast: DeriveInput = syn::parse(input).unwrap();
+
+    let attrs = ast
+        .attrs
+        .iter()
+        .map(|x| x.to_token_stream())
+        .collect::<Vec<_>>();
+    println!("{:?}", attrs);
 
     match apply_crud(ast) {
         Ok(x) => {
@@ -178,6 +185,18 @@ fn with_field(ast: &DeriveInput, f: &Field) -> TokenStream2 {
     }
 }
 
+fn map_attributes(attributes: &Vec<syn::Attribute>) -> Option<syn::Attribute> {
+    attributes.iter().find_map(|f| {
+        if f.path.is_ident("inner") {
+            let mut nf = f.clone();
+            nf.path = syn::parse_str("derive").unwrap();
+            Some(nf)
+        } else {
+            None
+        }
+    })
+}
+
 fn apply_crud(ast: DeriveInput) -> Result<TokenStream> {
     let fields = get_fields(&ast)?;
     let option_fields: Vec<_> = fields
@@ -189,6 +208,7 @@ fn apply_crud(ast: DeriveInput) -> Result<TokenStream> {
 
     let mut new_ast = ast.clone();
     set_fields(&mut new_ast, option_fields)?;
+    new_ast.attrs = map_attributes(&ast.attrs).into_iter().collect();
 
     new_ast.ident = syn::Ident::new(&format!("{}Builder", ast.ident), ast.ident.span());
 
