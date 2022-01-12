@@ -1,18 +1,14 @@
 use crud_helper::*;
 
-pub trait Builder<T> {
-    fn with(self, t: T) -> Self;
-}
-
-#[derive(Crud)]
+#[derive(Builder)]
 #[inner(Clone, Debug)]
-struct Story {
+struct Story<'a> {
     #[id]
-    id: String,
-    name: String,
+    id: &'a str,
+    name: &'a str,
 }
 
-#[derive(Crud, Clone)]
+#[derive(Builder, Clone)]
 struct Wrapper<T> {
     inner: T,
 }
@@ -20,20 +16,30 @@ struct Wrapper<T> {
 #[test]
 fn it_works() {
     let mut story = Story {
+        id: "test",
+        name: "test",
+    };
+
+    let builder = Story::builder().with_name("test2");
+    println!("{:?}", builder);
+
+    assert_eq!(story.name, "test");
+    builder.update(&mut story);
+    assert_eq!(story.name, "test2");
+}
+
+#[test]
+fn it_works_rev() {
+    let mut story = Story {
         id: "test".into(),
         name: "test".into(),
     };
 
-    let builder = Story::builder().with_name("test2".into());
-    println!("{:?}", builder);
+    let builder = Story::builder().with_name("test2");
 
-    assert_eq!(story.name, String::from("test"));
-    builder.update(&mut story);
-
-    assert_eq!(story.name, String::from("test2"));
-
-    let result = 2 + 2;
-    assert_eq!(result, 4);
+    assert_eq!(story.name, "test");
+    story.update(builder);
+    assert_eq!(story.name, "test2");
 }
 
 #[test]
@@ -43,6 +49,5 @@ fn test_generics() {
 
     assert_eq!(first.inner, 0);
     builder.update(&mut first);
-
     assert_eq!(first.inner, 42);
 }
