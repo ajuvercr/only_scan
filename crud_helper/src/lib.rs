@@ -6,11 +6,18 @@ use syn::{
     parse::Error, punctuated::Punctuated, spanned::Spanned, token::Comma, DeriveInput, Field,
 };
 
-const ATTRIBUTES: [&'static str; 2] = ["id", "inner"];
+const ATTRIBUTES: [&'static str; 3] = ["inner", "no_builder", "use_default"];
 
 type Result<T> = std::result::Result<T, Error>;
 
-#[proc_macro_derive(Builder, attributes(inner, id))]
+fn has_attr<I: ?Sized>(attrs: &Vec<syn::Attribute>, i: &I) -> bool
+where
+    syn::Ident: PartialEq<I>,
+{
+    attrs.iter().find(|f| f.path.is_ident(i)).is_some()
+}
+
+#[proc_macro_derive(Builder, attributes(inner, no_builder, use_default))]
 pub fn builder_derive(input: TokenStream) -> TokenStream {
     let ast: DeriveInput = syn::parse(input).unwrap();
 
@@ -123,32 +130,74 @@ fn update_function_rev(
 fn check_field(f: Field) -> TokenStream2 {
     let f_ident = &f.ident.unwrap();
     let name = f_ident.to_string();
-    quote! {
-      if self.#f_ident.is_none() {
-        errors.push(String::from(#name));
-      }
+    let use_default = has_attr(&f.attrs, "use_default");
+    if use_default {
+        quote! {}
+    } else {
+        quote! {
+          if self.#f_ident.is_none() {
+            errors.push(String::from(#name));
+          }
+        }
     }
 }
 
-fn set_field(f: Field) -> TokenStream2 {
+fn set_field(f: Field) -> Option<TokenStream2> {
     let f_ident = &f.ident.unwrap();
-    quote! {
-      #f_ident: self.#f_ident.unwrap(),
+    let use_default = has_attr(&f.attrs, "use_default");
+    let no_builder = has_attr(&f.attrs, "no_builder");
+    match (no_builder, use_default) {
+        (true, false) => None,
+        (true, true) => quote! { #f_ident: Default::default(), }.into(),
+        (false, false) => quote! { #f_ident: self.#f_ident.unwrap(), }.into(),
+        (false, true) => quote! { #f_ident: self.#f_ident.unwrap_or_default(), }.into(),
     }
 }
 
 fn builder_f(inp: &DeriveInput, new_ident: &syn::Ident) -> Result<TokenStream2> {
-    let fields = get_fields(inp)?;
+    let all_fields = get_fields(inp)?;
+    let fields: Vec<_> = all_fields
+        .iter()
+        .filter(|f| !has_attr(&f.attrs, "no_builder"))
+        .cloned()
+        .collect();
     let constructor = new_builder(&fields);
 
     let update_f = update_function(&fields, &inp.ident, &inp.generics);
     let update_f_rev = update_function_rev(&fields, new_ident, &inp.generics);
 
     let check_fields = apply_f(&fields, check_field);
-    let output = apply_f(&fields, set_field);
 
     let indent = &inp.ident;
     let generics = &inp.generics;
+
+    let try_into_impl = if let Some(output) = all_fields
+        .iter()
+        .cloned()
+        .try_fold(quote! {}, |q, f| set_field(f).map(|q1| quote! { #q1 #q }))
+    {
+        quote! {
+            impl #generics TryInto<#indent #generics> for #new_ident #generics {
+              type Error = Vec<String>;
+              fn try_into(self) -> std::result::Result<#indent #generics, Vec<String>> {
+                let mut errors = Vec::new();
+                #check_fields
+
+                if(errors.is_empty()) {
+                    Ok(#indent {
+                      #output
+                    })
+                } else {
+                    Err(errors)
+                }
+              }
+            }
+        }
+    } else {
+        quote! {}
+    };
+
+    //    fields.iter().cloned().map(f).collect()
 
     Ok(quote! {
       impl #generics #new_ident #generics {
@@ -156,21 +205,8 @@ fn builder_f(inp: &DeriveInput, new_ident: &syn::Ident) -> Result<TokenStream2> 
           #update_f
       }
 
-      impl #generics TryInto<#indent #generics> for #new_ident #generics {
-        type Error = Vec<String>;
-        fn try_into(self) -> std::result::Result<#indent #generics, Vec<String>> {
-          let mut errors = Vec::new();
-          #check_fields
+      #try_into_impl
 
-          if(errors.is_empty()) {
-              Ok(#indent {
-                #output
-              })
-          } else {
-              Err(errors)
-          }
-        }
-      }
 
       impl #generics #indent #generics {
           pub fn builder() -> #new_ident #generics {
@@ -206,11 +242,15 @@ fn with_field(f: Field) -> TokenStream2 {
         f_ident.span(),
     );
 
-    quote! {
-       fn #fun_ident(mut self, t: #ty)-> Self {
-         self.#f_ident = t.into();
-         self
-       }
+    if has_attr(&f.attrs, "no_builder") {
+        quote! {}
+    } else {
+        quote! {
+           fn #fun_ident(mut self, t: #ty)-> Self {
+             self.#f_ident = t.into();
+             self
+           }
+        }
     }
 }
 
@@ -226,6 +266,7 @@ fn apply_crud(ast: DeriveInput) -> Result<TokenStream> {
     let fields = get_fields(&ast)?;
     let option_fields: Vec<_> = fields
         .iter()
+        .filter(|f| !has_attr(&f.attrs, "no_builder"))
         .cloned()
         .flat_map(wrap_option)
         .map(|mut x| {
@@ -244,7 +285,14 @@ fn apply_crud(ast: DeriveInput) -> Result<TokenStream> {
 
     let ident = &new_ast.ident;
     let generics = &ast.generics;
-    let field_impls = apply_f(&fields, with_field);
+    let field_impls = {
+        let nfs: Vec<_> = fields
+            .iter()
+            .filter(|f| !has_attr(&f.attrs, "no_builder"))
+            .cloned()
+            .collect();
+        apply_f(&nfs, with_field)
+    };
 
     let quoted = quote! {
         #new_ast

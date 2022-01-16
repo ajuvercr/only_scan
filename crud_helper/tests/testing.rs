@@ -1,10 +1,12 @@
 use crud_helper::*;
 
+#[allow(dead_code)]
 #[derive(Builder)]
 #[inner(Clone, Debug)]
 struct Story<'a> {
-    #[id]
-    id: &'a str,
+    #[no_builder]
+    #[use_default]
+    id: Option<&'a str>,
     name: &'a str,
 }
 
@@ -16,7 +18,7 @@ struct Wrapper<T> {
 #[test]
 fn it_works() {
     let mut story = Story {
-        id: "test",
+        id: "test".into(),
         name: "test",
     };
 
