@@ -1,165 +1,92 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use rocket::fairing::AdHoc;
+use rocket::form::Form;
 use rocket::response::Redirect;
-use rocket::serde::json::{json, serde_json, Value};
+use rocket::serde::json::{json, serde_json, Json, Value};
 use rocket::serde::{Deserialize, Serialize};
 use rocket::{Build, Rocket, State};
 use rocket_dyn_templates::Template;
 
 use crate::repository::Repository as Repo;
-use crate::util;
+use crate::util::{self, id};
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
-struct Scrum {
-    epics: HashMap<String, Epic>,
-    stories: HashMap<String, Story>,
-}
-
-impl Scrum {
-    pub fn nothing() -> Self {
-        let epic = Epic::new(
-            "epic epic",
-            "In the comming years this epic should be handled successfully",
-            Status::Doing,
-        );
-        let stories = vec![
-            Story::new(
-                "small story",
-                "Some stories are small, others are big",
-                Status::Doing,
-                &epic,
-            ),
-            Story::new(
-                "to big story",
-                "Some stories are small, others are big",
-                Status::Todo,
-                &epic,
-            ),
-            Story::new(
-                "small story",
-                "Some stories are small, others are big",
-                Status::Done,
-                &epic,
-            ),
-            Story::new(
-                ":( story",
-                "Some stories are small, others are big",
-                Status::Doing,
-                None,
-            ),
-        ]
-        .into_iter()
-        .map(|x| (x.id.clone(), x))
-        .collect();
-
-        let epics = vec![(epic.id.clone(), epic)].into_iter().collect();
-
-        Self { stories, epics }
-    }
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, Copy)]
-enum Status {
-    Todo,
-    Doing,
-    Done,
-}
-
-impl Status {
-    fn right(self) -> Self {
-        use Status::*;
-        match self {
-            Todo => Doing,
-            Doing => Done,
-            Done => Done,
-        }
-    }
-
-    fn left(self) -> Self {
-        use Status::*;
-        match self {
-            Todo => Todo,
-            Doing => Todo,
-            Done => Doing,
-        }
-    }
-}
-
-pub fn has_next(status: &str) -> bool {
-    return status != "Done";
-}
-
-pub fn has_previous(status: &str) -> bool {
-    return status != "Todo";
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-struct Epic {
+#[derive(Builder, Deserialize, Serialize, Debug, Clone)]
+#[inner(FromForm, Deserialize, Serialize, Debug)]
+struct Task {
+    #[no_builder]
     id: String,
+    done: bool,
+    img: Option<String>,
     title: String,
-    content: String,
-    status: Status,
-    img_url: String,
+    description: String,
+    points: usize,
+    parent: Option<String>,
+    sub_tasks: Vec<String>,
 }
 
-impl Epic {
-    pub const DEFAULT_IMG: &'static str = "/images/default.png";
+fn add<T, R: Into<T>>(to: &mut Vec<T>, t: R) {
+    to.push(t.into());
+}
 
-    pub fn new<S: Into<Option<Status>>>(title: &str, content: &str, status: S) -> Self {
+fn remove<T: 'static, R: 'static + ?Sized>(to: &mut Vec<T>, t: &R)
+where
+    T: std::cmp::PartialEq<R>,
+{
+    to.retain(|x| x.eq(t));
+}
+
+pub type Tasks = HashMap<String, Task>;
+
+impl Task {
+    pub fn new() -> Self {
         Self {
-            id: util::id(),
-            title: title.to_string(),
-            content: content.to_string(),
-            status: status.into().unwrap_or(Status::Todo),
-            img_url: Epic::DEFAULT_IMG.to_string(),
-        }
-    }
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-struct Story {
-    id: String,
-    title: String,
-    content: String,
-    status: Status,
-    today: bool,
-    epic: Option<String>,
-}
-
-impl Story {
-    pub fn new<'a, S: Into<Option<Status>>, E: Into<Option<&'a Epic>>>(
-        title: &str,
-        content: &str,
-        status: S,
-        epic: E,
-    ) -> Self {
-        Self {
-            id: util::id(),
-            title: title.to_string(),
-            content: content.to_string(),
-            status: status.into().unwrap_or(Status::Todo),
-            today: false,
-            epic: epic.into().map(|epic| epic.id.clone()),
+            id: id(),
+            done: false,
+            img: None,
+            title: String::from("Some title"),
+            description: String::from("Some description"),
+            points: 0,
+            parent: None,
+            sub_tasks: Vec::new(),
         }
     }
 
-    pub fn to_value(&self, epics: &HashMap<String, Epic>) -> Value {
-        let mut value = match serde_json::to_value(self) {
-            Ok(Value::Object(inner)) => inner,
-            _ => panic!(),
+    pub fn get_points(&self, tasks: &Tasks) -> (usize, usize) {
+        let mut out = (0, 0);
+
+        if self.done {
+            out.0 += self.points;
+        }
+        out.1 += self.points;
+
+        for s in &self.sub_tasks {
+            let (x, y) = tasks[s].get_points(tasks);
+            out.0 += x;
+            out.1 += y;
+        }
+
+        out
+    }
+
+    pub fn to_value(&self, tasks: &Tasks) -> Option<Value> {
+        let mut out = match serde_json::to_value(self) {
+            Ok(Value::Object(x)) => x,
+            _ => return None,
         };
 
-        if let Some(ref epic) = self.epic {
-            let v = rocket::serde::json::serde_json::json!({
-                "id": &epic,
-                "img_url": &epics[epic].img_url.clone()
-            });
+        let value_tasks = self
+            .sub_tasks
+            .iter()
+            .flat_map(|t| tasks[t].to_value(tasks))
+            .collect::<Vec<_>>();
+        out.insert("sub_tasks".to_string(), Value::Array(value_tasks));
 
-            value.insert("epic".to_string(), v);
-        }
+        let (done, total) = self.get_points(tasks);
+        out.insert(String::from("done"), Value::Number(done.into()));
+        out.insert(String::from("total"), Value::Number(total.into()));
 
-        Value::Object(value)
+        Some(Value::Object(out))
     }
 }
 
@@ -172,56 +99,72 @@ fn default_location() -> String {
     "scrum.json".to_string()
 }
 
-#[get("/<id>")]
-fn get_one(scrum: &State<Repo<Scrum>>, id: &str) -> Template {
-    println!("trying id {}", id);
-    let ctx = scrum.with(|scrum| {
-        println!("{:?}", scrum);
-        scrum.stories[id].to_value(&scrum.epics)
+#[post("/new")]
+fn create_one(tasks: &State<Repo<Tasks>>) -> Redirect {
+    tasks.with_save(|tasks| {
+        let new = Task::new();
+        let id = new.id.clone();
+        tasks.insert(id, new);
     });
+    Redirect::to("/scrum")
+}
+
+#[get("/<id>")]
+fn get_one(tasks: &State<Repo<Tasks>>, id: &str) -> Template {
+    let ctx = tasks.with(|tasks| tasks[id].to_value(tasks));
     println!("ctx {:?}", ctx);
     Template::render("scrum/detail", ctx)
 }
 
+#[post("/<id>/sub/<child>")]
+fn add_child(tasks: &State<Repo<Tasks>>, id: &str, child: &str) -> Redirect {
+    let ctx = tasks.with_save(|tasks| {
+        tasks.get_mut(id).map(|t| add(&mut t.sub_tasks, child));
+    });
+    Redirect::to("/scrum")
+}
+
+#[delete("/<id>/sub/<child>")]
+fn remove_child(tasks: &State<Repo<Tasks>>, id: &str, child: &str) -> Redirect {
+    let ctx = tasks.with_save(|tasks| tasks.get_mut(id).map(|t| remove(&mut t.sub_tasks, child)));
+    Redirect::to("/scrum")
+}
+
+#[patch("/<id>", data = "<update>")]
+fn patch_child(tasks: &State<Repo<Tasks>>, id: &str, update: Json<TaskBuilder>) -> Redirect {
+    let update = update.into_inner();
+    println!("patch to {} with {:?}", id, update);
+    tasks.with_save(|tasks| tasks.get_mut(id).map(|t| t.update(update)));
+    Redirect::to("/scrum")
+}
+
 #[get("/")]
-fn get(scrum: &State<Repo<Scrum>>) -> Template {
-    let ctx = scrum.with(|scrum| {
-        rocket::serde::json::serde_json::json!({
-            "stories": &scrum.stories.values().map(|s| s.to_value(&scrum.epics)).collect::<Vec<_>>(),
-            "epics": scrum.epics.clone(),
-        })
+fn get(tasks: &State<Repo<Tasks>>) -> Template {
+    let ctx = tasks.with(|tasks| {
+        let tasks: Vec<_> = tasks.values().filter(|x| x.parent.is_none()).flat_map(|t| t.to_value(tasks)).collect();
+        rocket::serde::json::serde_json::json!({ "tasks": tasks })
     });
 
     Template::render("scrum/index", ctx)
 }
 
-#[post("/<id>/left")]
-fn do_left(scrum: &State<Repo<Scrum>>, id: &str) -> Redirect {
-    scrum.with_save(|scrum| {
-        if let Some(story) = scrum.stories.get_mut(id) {
-            story.status = story.status.left();
-        }
-    });
-    Redirect::to("/scrum")
-}
-
-#[post("/<id>/right")]
-fn do_right(scrum: &State<Repo<Scrum>>, id: &str) -> Redirect {
-    scrum.with_save(|scrum| {
-        if let Some(story) = scrum.stories.get_mut(id) {
-            story.status = story.status.right();
-        }
-    });
-    Redirect::to("/scrum")
-}
-
 pub fn fuel(rocket: Rocket<Build>) -> Rocket<Build> {
     rocket
-        .mount("/scrum", routes![get, get_one, do_left, do_right])
+        .mount(
+            "/scrum",
+            routes![
+                get,
+                get_one,
+                create_one,
+                patch_child,
+                remove_child,
+                add_child
+            ],
+        )
         .attach(AdHoc::config::<ScrumConfig>())
-        .attach(Repo::<Scrum>::adhoc(
+        .attach(Repo::<Tasks>::adhoc(
             "scrum",
             |c: &ScrumConfig| c.scrum_location.to_string(),
-            Scrum::nothing(),
+            HashMap::new(),
         ))
 }

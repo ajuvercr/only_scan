@@ -1,24 +1,21 @@
-<div class="{{lower this.status}} story">
-  <div class="edit">
-    <button class="button-54" onclick='window.location.href="/scrum/{{this.id}}"'>edit</button>
-  </div>
-  <form action="/scrum/{{this.id}}/left" method="POST" class="arrow-form">
-    <a href="#" onclick="this.parentNode.submit()" class="{{#if (has_status_previous this.status)}}arrow prev{{/if}}">
-    </a>
-  </form>
-  <div class="content">
+<div class="story" data-story="{{this.id}}" data-parent="{{this.parent}}" draggable="true"
+  ondragstart="onDragStart(event)" ondrop="onDrop(event)" ondragover="onDragOver(event)">
+  <div class="content draggable dropzone">
     <div class="title">
-      <img src="{{image this.epic.img_url}}" height="64">
+      <img src="{{image this.img}}" height="64">
       <h3>
         {{this.title}}
       </h3>
+      <div>
+        <span>{{this.done}}</span> / <span>{{this.total}} </span>
+      </div>
     </div>
     <p>
-      {{this.content}}
+      {{this.description}}
     </p>
-  </div>
 
-  <form action="/scrum/{{this.id}}/right" method="POST" class="arrow-form">
-    <a href="#" onclick="this.parentNode.submit()" class="{{#if (has_status_next this.status)}}arrow next{{/if}}"></a>
-  </form>
+  </div>
+    {{#each this.sub_tasks}}
+    {{> scrum/partials/story }}
+    {{/each}}
 </div>

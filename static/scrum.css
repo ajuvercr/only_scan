@@ -6,56 +6,10 @@
 
 
 .list {
-  margin: auto;
-  display: grid;
-  grid-template-columns: auto;
-  grid-template-rows: auto;
-  column-gap: 10px;
-  row-gap: 15px;
-  place-items: center;
-  grid-auto-flow: column;
-  max-width: 90%;
-  width: max-content;
-}
-
-.todo {
-  grid-column-start: 1;
-  grid-column-end: 2;
-  background-color: var(--todo);
-}
-
-.doing {
-  grid-column-start: 2;
-  grid-column-end: 3;
-  background-color: var(--doing);
-}
-
-.done {
-  grid-column-start: 3;
-  grid-column-end: 4;
-  background-color: var(--done);
-}
-
-.scrum header {
-  justify-self: start;
-  background-color: unset;
-  position: relative;
-  margin-left: 1em;
-  margin-bottom: 1em;
-  font-size: 2em;
-  font-weight: bold;
-  font-family: "Lucida Console", Courier, monospace;
-}
-
-.scrum header::after {
-  content: '';
-  position: absolute;
-  left: -20%;
-  top: 80%;
-  width: 140%;
-  height: 0.8em;
-  transform: skew(-30deg);
-  background: lime;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
 }
 
 header.done::after {
@@ -72,11 +26,17 @@ header.todo::after {
 
 
 .story {
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+    width: 30%;
+    min-width: 400px;
+    border: 1px solid black;
 }
+
+.story > .story {
+  margin: 10px;
+  width: unset;
+  min-width: unset;
+}
+
 
 .story .edit {
   position: absolute;
@@ -105,76 +65,15 @@ header.todo::after {
   padding: 0 60px;
 }
 
-.arrow {
-  margin: 20px;
-  display: inline-block;
-  width: 40px;
-  height: 40px;
-  background: transparent;
-  text-indent: -9999px;
-  border-top: 4px solid #bfbfbf;
-  border-left: 4px solid #bfbfbf;
-  transition: all 250ms ease-in-out;
-  transition-property: border-color border-width;
-  text-decoration: none;
-  color: transparent;
-}
-
-.arrow:hover {
-  border-color: gray;
-  border-width: 6px;
-}
-
-.arrow:before {
-  display: block;
-  height: 200%;
-  width: 200%;
-  margin-left: -50%;
-  margin-top: -50%;
-  content: "";
-  transform: rotate(45deg);
-}
-
-.arrow.prev {
-  transform: rotate(-45deg);
-  left: 0;
-}
-
-.arrow.next {
-  transform: rotate(135deg);
-  right: 0;
-}
-
 .title {
   display: flex;
   gap: 32px;
 }
 
-.sidebar {
-  position: absolute;
-  right: 0;
-  top: 0;
-  height: 100%;
-
-  background-color: whitesmoke;
-
-  transition-property: transform;
-  transition-duration: 0.3s;
-  transform: translateX(100%);
-
-}
-
-.sidebar.open {
-  transform: unset;
-}
-
-.sidebar button {
-  transform: translateX(-100%);
-}
-
 .main {
   flex-grow: 1;
   position: relative;
+  padding-top: 40px;
 }
 
 /* CSS */

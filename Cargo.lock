@@ -200,6 +200,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "crud_helper"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "devise"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -896,6 +905,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "cool-id-generator",
+ "crud_helper",
  "rand",
  "regex",
  "rocket",

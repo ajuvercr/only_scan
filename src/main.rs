@@ -1,6 +1,8 @@
 #[macro_use]
 extern crate rocket;
 extern crate chrono;
+#[macro_use]
+extern crate crud_helper;
 extern crate cool_id_generator;
 extern crate rand;
 extern crate regex;
@@ -34,8 +36,6 @@ handlebars_helper!(shorten_cat: |x: str|
 handlebars_helper!(into_euro: |x: u64| format!("{:.2}", x as f64 / 100.0));
 handlebars_helper!(eq: |x: str, y: str| x == y);
 handlebars_helper!(lower: |x: str| x.to_lowercase());
-handlebars_helper!(has_status_next: |x: str| scrum::has_next(x));
-handlebars_helper!(has_status_previous: |x: str| scrum::has_previous(x));
 handlebars_helper!(image: |name: Json| {
     if let rocket::serde::json::Value::String(name) = name {
         format!("/static/{}", name)
@@ -63,8 +63,5 @@ fn rocket() -> _ {
         handles.register_helper("euro", Box::new(into_euro));
         handles.register_helper("lower", Box::new(lower));
         handles.register_helper("image", Box::new(image));
-
-        handles.register_helper("has_status_next", Box::new(has_status_next));
-        handles.register_helper("has_status_previous", Box::new(has_status_previous));
     }))
 }

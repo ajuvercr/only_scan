@@ -18,6 +18,8 @@ rand = "0.8.4"
 time = { version = "0.2.27", features = ["serde"] }
 cool-id-generator = "1.0"
 
+crud_helper = { path = "./crud_helper" }
+
 [dependencies.rocket_dyn_templates]
 version = "0.1.0-rc.1"
 features = ["handlebars"]
