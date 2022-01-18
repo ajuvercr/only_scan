@@ -10,6 +10,9 @@ extern crate rocket_dyn_templates;
 extern crate time;
 extern crate uuid;
 
+extern crate feignhttp;
+
+pub mod oauth;
 mod desk;
 pub mod repository;
 mod scan;
@@ -55,6 +58,7 @@ fn rocket() -> _ {
     let rocket = desk::fuel(rocket);
     let rocket = scan::fuel(rocket);
     let rocket = scrum::fuel(rocket);
+    let rocket = oauth::fuel(rocket);
     // This also adds the handlebars fairing
     rocket.attach(Template::custom(|engines| {
         let handles = &mut engines.handlebars;
