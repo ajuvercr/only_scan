@@ -12,6 +12,7 @@ extern crate uuid;
 
 extern crate feignhttp;
 
+mod debug;
 pub mod oauth;
 mod desk;
 pub mod repository;
@@ -60,6 +61,7 @@ fn rocket() -> _ {
     let rocket = scrum::fuel(rocket);
     let rocket = oauth::fuel(rocket);
     // This also adds the handlebars fairing
+    
     rocket.attach(Template::custom(|engines| {
         let handles = &mut engines.handlebars;
         handles.register_helper("eq", Box::new(eq));
@@ -67,5 +69,5 @@ fn rocket() -> _ {
         handles.register_helper("euro", Box::new(into_euro));
         handles.register_helper("lower", Box::new(lower));
         handles.register_helper("image", Box::new(image));
-    }))
+    })).attach(debug::Debug)
 }

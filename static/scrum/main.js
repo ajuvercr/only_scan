@@ -22,7 +22,7 @@ function onDragOver(event) {
 
 var dragged;
 
-function onDrop(event) {
+async function onDrop(event) {
     event.preventDefault();
 
     delete dragged.style.opacity;
@@ -42,7 +42,7 @@ function onDrop(event) {
 
     console.log("parent", parent, "story", story, "new_parent", new_parent);
 
-    fetch(`/scrum/${story}`, {
+    await fetch(`/scrum/${story}`, {
        method: "PATCH",
        headers: {  
         'Content-Type': 'application/json'
@@ -50,16 +50,14 @@ function onDrop(event) {
        body: JSON.stringify({"parent": new_parent})
      })
 
+    await fetch(`/scrum/${new_parent}/sub/${story}`, {method: "POST"});
 
-    const createXhr = new XMLHttpRequest();
-    createXhr.open('POST', `/scrum/${new_parent}/sub/${story}`);
-    createXhr.send();
 
     if (parent) {
-        const deleteXhr = new XMLHttpRequest();
-        deleteXhr.open('DELETE', `/scrum/${parent}/sub/${story}`);
-        deleteXhr.send();
+        await fetch(`/scrum/${parent}/sub/${story}`, {method: "DELETE"});
     }
+
+    location.reload();
 }
 
 function onDragStart(event) {
