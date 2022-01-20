@@ -33,7 +33,7 @@ fn remove<T: 'static, R: 'static + ?Sized>(to: &mut Vec<T>, t: &R)
 where
     T: std::cmp::PartialEq<R>,
 {
-    to.retain(|x| x.eq(t));
+    to.retain(|x| !x.eq(t));
 }
 
 pub type Tasks = HashMap<String, Task>;
@@ -117,31 +117,30 @@ fn get_one(tasks: &State<Repo<Tasks>>, id: &str) -> Template {
 }
 
 #[post("/<id>/sub/<child>")]
-fn add_child(tasks: &State<Repo<Tasks>>, id: &str, child: &str) -> Redirect {
-    let ctx = tasks.with_save(|tasks| {
-        tasks.get_mut(id).map(|t| add(&mut t.sub_tasks, child));
-    });
-    Redirect::to("/scrum")
+fn add_child(tasks: &State<Repo<Tasks>>, id: &str, child: &str) -> Option<()> {
+    tasks.with_save(|tasks| tasks.get_mut(id).map(|t| add(&mut t.sub_tasks, child)))
 }
 
 #[delete("/<id>/sub/<child>")]
-fn remove_child(tasks: &State<Repo<Tasks>>, id: &str, child: &str) -> Redirect {
-    let ctx = tasks.with_save(|tasks| tasks.get_mut(id).map(|t| remove(&mut t.sub_tasks, child)));
-    Redirect::to("/scrum")
+fn remove_child(tasks: &State<Repo<Tasks>>, id: &str, child: &str) -> Option<()> {
+    tasks.with_save(|tasks| tasks.get_mut(id).map(|t| remove(&mut t.sub_tasks, child)))
 }
 
 #[patch("/<id>", data = "<update>")]
-fn patch_child(tasks: &State<Repo<Tasks>>, id: &str, update: Json<TaskBuilder>) -> Redirect {
+fn patch_child(tasks: &State<Repo<Tasks>>, id: &str, update: Json<TaskBuilder>) -> Option<()> {
     let update = update.into_inner();
     println!("patch to {} with {:?}", id, update);
-    tasks.with_save(|tasks| tasks.get_mut(id).map(|t| t.update(update)));
-    Redirect::to("/scrum")
+    tasks.with_save(|tasks| tasks.get_mut(id).map(|t| t.update(update)))
 }
 
 #[get("/")]
 fn get(tasks: &State<Repo<Tasks>>) -> Template {
     let ctx = tasks.with(|tasks| {
-        let tasks: Vec<_> = tasks.values().filter(|x| x.parent.is_none()).flat_map(|t| t.to_value(tasks)).collect();
+        let tasks: Vec<_> = tasks
+            .values()
+            .filter(|x| x.parent.is_none())
+            .flat_map(|t| t.to_value(tasks))
+            .collect();
         rocket::serde::json::serde_json::json!({ "tasks": tasks })
     });
 

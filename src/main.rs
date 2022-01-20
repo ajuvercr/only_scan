@@ -13,8 +13,8 @@ extern crate uuid;
 extern crate feignhttp;
 
 mod debug;
-pub mod oauth;
 mod desk;
+pub mod oauth;
 pub mod repository;
 mod scan;
 mod scrum;
@@ -27,7 +27,7 @@ pub mod vision;
 mod tests;
 
 use rocket::Route;
-use rocket_dyn_templates::{Template, handlebars::{handlebars_helper}};
+use rocket_dyn_templates::{handlebars::handlebars_helper, Template};
 
 #[get("/")]
 async fn index() -> Template {
@@ -61,13 +61,15 @@ fn rocket() -> _ {
     let rocket = scrum::fuel(rocket);
     let rocket = oauth::fuel(rocket);
     // This also adds the handlebars fairing
-    
-    rocket.attach(Template::custom(|engines| {
-        let handles = &mut engines.handlebars;
-        handles.register_helper("eq", Box::new(eq));
-        handles.register_helper("shorten_cat", Box::new(shorten_cat));
-        handles.register_helper("euro", Box::new(into_euro));
-        handles.register_helper("lower", Box::new(lower));
-        handles.register_helper("image", Box::new(image));
-    })).attach(debug::Debug)
+
+    rocket
+        .attach(Template::custom(|engines| {
+            let handles = &mut engines.handlebars;
+            handles.register_helper("eq", Box::new(eq));
+            handles.register_helper("shorten_cat", Box::new(shorten_cat));
+            handles.register_helper("euro", Box::new(into_euro));
+            handles.register_helper("lower", Box::new(lower));
+            handles.register_helper("image", Box::new(image));
+        }))
+        .attach(debug::Debug)
 }

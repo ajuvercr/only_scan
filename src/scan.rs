@@ -6,8 +6,8 @@ use rocket::serde::json::serde_json::json;
 use rocket::serde::{Deserialize, Serialize};
 use rocket::State;
 use rocket::{Build, Rocket};
-use rocket_dyn_templates::Template;
 use rocket_dyn_templates::handlebars::handlebars_helper;
+use rocket_dyn_templates::Template;
 use std::io::Write;
 
 use rand::distributions::Alphanumeric;
@@ -546,8 +546,6 @@ fn delete_one(scan_id: &str, item_id: &str, scans: &State<Scans>) -> Redirect {
 
     Redirect::to(format!("/scan/{}", scan_id))
 }
-
-
 
 pub fn fuel(rocket: Rocket<Build>) -> Rocket<Build> {
     rocket

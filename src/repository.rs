@@ -38,12 +38,12 @@ impl<T> Repository<T> {
 
 macro_rules! get {
     ($i:expr) => {
-        match ($i.try_lock()) {
+        match ($i.lock()) {
             Err(e) => {
                 println!("Poison error {}", e.to_string());
                 panic!("aaaaaaahhhhhh");
-            },
-            Ok(t) => t
+            }
+            Ok(t) => t,
         }
     };
 }

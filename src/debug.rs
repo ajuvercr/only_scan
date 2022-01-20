@@ -1,6 +1,5 @@
-use rocket::{Request, Data, Response};
 use rocket::fairing::{Fairing, Info, Kind};
-
+use rocket::{Data, Request, Response};
 
 pub struct Debug;
 
@@ -9,7 +8,7 @@ impl Fairing for Debug {
     fn info(&self) -> Info {
         Info {
             name: "GET/POST Counter",
-            kind: Kind::Request | Kind::Response
+            kind: Kind::Request | Kind::Response,
         }
     }
 
@@ -25,4 +24,3 @@ impl Fairing for Debug {
         println!("{:?}", response);
     }
 }
-

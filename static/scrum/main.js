@@ -23,7 +23,7 @@ function onDragOver(event) {
 var dragged;
 
 async function onDrop(event) {
-    event.preventDefault();
+ event.stopPropagation() ;  event.preventDefault();
 
     delete dragged.style.opacity;
 
@@ -38,7 +38,7 @@ async function onDrop(event) {
 
     const [story, parent] = event
         .dataTransfer
-        .getData('text').split();
+        .getData('text').split(" ");
 
     console.log("parent", parent, "story", story, "new_parent", new_parent);
 
