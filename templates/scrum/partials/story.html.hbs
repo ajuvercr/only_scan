@@ -3,22 +3,25 @@
   <div class="content draggable dropzone">
     <div class="title">
       <img src="{{image this.img}}" height="64">
-      <h3>
+      <h3 class="field" data-for="{{this.id}}" data-field="title" data-original="{{this.title}}">
         {{this.title}}
       </h3>
       <div>
-        <span>{{this.done}}</span> / <span>{{this.total}} </span>
+          <div onclick="toggleDone(event)" data-for="{{this.id}}" class="isDone {{this.done}}"></div>
+          <span class="field" data-for="{{this.id}}" data-field="points" data-original="{{this.points}}">{{this.points}}</span>
       </div>
     </div>
     <p>
       {{this.id}}
     </p>
-    <p>
+    <p class="field" data-for="{{this.id}}" data-field="description" data-original="{{this.description}}">
       {{this.description}}
     </p>
-
+    <button onclick="handleEdit(event)">Edit</button>
   </div>
+  <div class="children">
     {{#each this.sub_tasks}}
-    {{> scrum/partials/story }}
+        {{> scrum/partials/story }}
     {{/each}}
+  </div>
 </div>

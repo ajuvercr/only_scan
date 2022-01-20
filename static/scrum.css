@@ -4,6 +4,10 @@
   --doing: brown;
 }
 
+span {
+  vertical-align: middle;
+}
+
 
 .list {
     display: flex;
@@ -104,6 +108,23 @@ header.todo::after {
 .sidebar .button-54:active {
   top: 0;
   left: 0;
+}
+
+.isDone {
+  width: 1em;
+  height: 1em;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.isDone.true {
+    background-color: blue;
+
+}
+
+.isDone.false {
+
+    background-color: red;
 }
 
 

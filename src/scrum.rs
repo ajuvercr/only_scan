@@ -1,19 +1,18 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use rocket::fairing::AdHoc;
-use rocket::form::Form;
 use rocket::response::Redirect;
-use rocket::serde::json::{json, serde_json, Json, Value};
+use rocket::serde::json::{serde_json, Json, Value};
 use rocket::serde::{Deserialize, Serialize};
 use rocket::{Build, Rocket, State};
 use rocket_dyn_templates::Template;
 
 use crate::repository::Repository as Repo;
-use crate::util::{self, id};
+use crate::util::id;
 
 #[derive(Builder, Deserialize, Serialize, Debug, Clone)]
 #[inner(FromForm, Deserialize, Serialize, Debug)]
-struct Task {
+pub struct Task {
     #[no_builder]
     id: String,
     done: bool,
@@ -83,7 +82,7 @@ impl Task {
         out.insert("sub_tasks".to_string(), Value::Array(value_tasks));
 
         let (done, total) = self.get_points(tasks);
-        out.insert(String::from("done"), Value::Number(done.into()));
+        out.insert(String::from("completed"), Value::Number(done.into()));
         out.insert(String::from("total"), Value::Number(total.into()));
 
         Some(Value::Object(out))
