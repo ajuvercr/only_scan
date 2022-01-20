@@ -129,7 +129,11 @@ fn remove_child(tasks: &State<Repo<Tasks>>, id: &str, child: &str) -> Option<()>
 fn patch_child(tasks: &State<Repo<Tasks>>, id: &str, update: Json<TaskBuilder>) -> Option<()> {
     let update = update.into_inner();
     println!("patch to {} with {:?}", id, update);
-    tasks.with_save(|tasks| tasks.get_mut(id).map(|t| t.update(update)))
+    tasks.with_save(|tasks| tasks.get_mut(id).map(|t| { t.update(update);
+        if t.parent.as_ref().map(|x| x.is_empty()).unwrap_or(false) {
+          t.parent = None;
+        }
+    }))
 }
 
 #[get("/")]

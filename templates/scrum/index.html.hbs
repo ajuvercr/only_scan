@@ -6,7 +6,7 @@
 {{/inline}}
 
 {{#*inline "page"}}
-<div class="main">
+<div class="main" ondrop="onDrop(event)" ondragover="onDragOver(event)">
     <div class="scrum list">
         {{#each tasks}}
         {{> scrum/partials/story }}

@@ -10,12 +10,12 @@ async function onDrop(event) {
     delete dragged.style.opacity;
 
     let target = event.target;
-    while(!target.classList.contains("story")) {
+    while(target && !target.classList.contains("story")) {
         target = target.parentElement;
     }
 
     if(target == dragged) return;
-    const new_parent = target.dataset.story;
+    const new_parent = target == null ? "" : target.dataset.story;
 
 
     const [story, parent] = event
@@ -33,7 +33,6 @@ async function onDrop(event) {
      })
 
     await fetch(`/scrum/${new_parent}/sub/${story}`, {method: "POST"});
-
 
     if (parent) {
         await fetch(`/scrum/${parent}/sub/${story}`, {method: "DELETE"});
@@ -53,6 +52,12 @@ function onDragStart(event) {
     event
         .dataTransfer
         .setData('text/plain', target.dataset.story + " " + target.dataset.parent);
+}
+
+function tryParse(x) {
+    const o = parseInt(x);
+    if(Number.isNaN(o)) return x;
+    return o;
 }
 
 const editing = new Set();
@@ -75,7 +80,7 @@ function handleEdit(event) {
               
               const f = field.dataset.get || "innerText";
               if(field.dataset.original !== field[f]) {
-                obj[field.dataset.field] = field[f];
+                obj[field.dataset.field] = tryParse(field[f]);
               }
           }
         }
