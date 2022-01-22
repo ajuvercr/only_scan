@@ -10,10 +10,14 @@ span {
 
 
 .list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    justify-content: center;
+    display: grid;
+    padding: 0 30px;
+    align-content: center;
+    grid-gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(400px,1fr));
+}
+.children { 
+    padding: 10px;
 }
 
 header.done::after {
@@ -30,17 +34,12 @@ header.todo::after {
 
 
 .story {
-    width: 30%;
-    min-width: 400px;
-    border: 1px solid black;
+    background-color: rgba(0.7,0.7,0.7,0.1);
 }
 
-.story > .story {
-  margin: 10px;
-  width: unset;
-  min-width: unset;
+.children .story + .story {
+    margin-top: 10px;
 }
-
 
 .story .edit {
   position: absolute;
@@ -51,6 +50,18 @@ header.todo::after {
   opacity: 0;
   transition-property: all;
   transition-duration: 0.3s;
+}
+
+.progress {
+    margin-bottom: 4px;
+    background-color: grey;
+    height: 16px;
+    width: 100%;
+}
+
+.progress div {
+  height: 100%;
+  background-color: green;
 }
 
 .story:hover .edit {
@@ -65,12 +76,18 @@ header.todo::after {
   position: relative;
 }
 
-.story .content {
-  padding: 0 60px;
+.content {
+    padding: 0 16px;
+}
+.content button {
+  width: 100%;
 }
 
 .title {
   display: flex;
+  justify-content: space-between;
+  padding-top: 5px;
+    padding: 0 16px;
   gap: 32px;
 }
 
@@ -115,16 +132,15 @@ header.todo::after {
   height: 1em;
   display: inline-block;
   vertical-align: middle;
+    background-size:cover;
 }
 
 .isDone.true {
-    background-color: blue;
-
+background-image: url(/static/images/icon/check-circle.svg);
 }
 
 .isDone.false {
-
-    background-color: red;
+background-image: url(/static/images/icon/circle.svg);
 }
 
 

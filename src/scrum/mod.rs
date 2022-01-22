@@ -9,9 +9,11 @@ use rocket_dyn_templates::Template;
 
 use crate::repository::Repository as Repo;
 use crate::util::id;
+pub mod models;
+mod schema;
 
 #[derive(Builder, Deserialize, Serialize, Debug, Clone)]
-#[inner(FromForm, Deserialize, Serialize, Debug)]
+#[inner(#[derive(FromForm, Deserialize, Serialize, Debug)])]
 pub struct Task {
     #[no_builder]
     id: String,
@@ -85,6 +87,17 @@ impl Task {
         out.insert(String::from("completed"), Value::Number(done.into()));
         out.insert(String::from("total"), Value::Number(total.into()));
 
+        if total == 0 {
+            out.insert(
+                String::from("progress"),
+                    Value::Number(0.into()),
+            );
+        } else {
+            out.insert(
+                String::from("progress"),
+                Value::Number((done * 100 / total).into()),
+            );
+        }
         Some(Value::Object(out))
     }
 }
@@ -129,11 +142,14 @@ fn remove_child(tasks: &State<Repo<Tasks>>, id: &str, child: &str) -> Option<()>
 fn patch_child(tasks: &State<Repo<Tasks>>, id: &str, update: Json<TaskBuilder>) -> Option<()> {
     let update = update.into_inner();
     println!("patch to {} with {:?}", id, update);
-    tasks.with_save(|tasks| tasks.get_mut(id).map(|t| { t.update(update);
-        if t.parent.as_ref().map(|x| x.is_empty()).unwrap_or(false) {
-          t.parent = None;
-        }
-    }))
+    tasks.with_save(|tasks| {
+        tasks.get_mut(id).map(|t| {
+            t.update(update);
+            if t.parent.as_ref().map(|x| x.is_empty()).unwrap_or(false) {
+                t.parent = None;
+            }
+        })
+    })
 }
 
 #[get("/")]

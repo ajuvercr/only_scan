@@ -1,8 +1,11 @@
+#![recursion_limit = "256"]
 #[macro_use]
 extern crate rocket;
 extern crate chrono;
 #[macro_use]
 extern crate crud_helper;
+#[macro_use]
+extern crate diesel;
 extern crate cool_id_generator;
 extern crate rand;
 extern crate regex;
@@ -29,6 +32,7 @@ mod tests;
 use rocket::Route;
 use rocket_dyn_templates::{handlebars::handlebars_helper, Template};
 
+pub type Conn = diesel::PgConnection;
 #[get("/")]
 async fn index() -> Template {
     Template::render("index", ())

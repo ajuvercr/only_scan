@@ -254,12 +254,8 @@ fn with_field(f: Field) -> TokenStream2 {
     }
 }
 
-fn map_attributes(attributes: &mut Vec<syn::Attribute>) {
-    attributes.iter_mut().for_each(|f| {
-        if f.path.is_ident("inner") {
-            f.path = syn::parse_str("derive").unwrap();
-        };
-    });
+fn get_inner_attr(attributes: &Vec<syn::Attribute>) -> Option<TokenStream2> {
+    attributes.iter().filter(|f| f.path.is_ident("inner")).flat_map(|x| x.parse_args()).next()
 }
 
 fn apply_crud(ast: DeriveInput) -> Result<TokenStream> {
@@ -277,7 +273,9 @@ fn apply_crud(ast: DeriveInput) -> Result<TokenStream> {
 
     let mut new_ast = ast.clone();
     set_fields(&mut new_ast, option_fields)?;
-    map_attributes(&mut new_ast.attrs);
+
+    let inner_attr = get_inner_attr(&new_ast.attrs);
+    new_ast.attrs = Vec::new();
     clean_attrs(&mut new_ast.attrs);
     new_ast.ident = syn::Ident::new(&format!("{}Builder", ast.ident), ast.ident.span());
 
@@ -295,6 +293,7 @@ fn apply_crud(ast: DeriveInput) -> Result<TokenStream> {
     };
 
     let quoted = quote! {
+        #inner_attr
         #new_ast
         #builder
 

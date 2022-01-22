@@ -8,6 +8,7 @@ use rocket::serde::json::serde_json::{self};
 use rocket::serde::{Deserialize, Serialize};
 use std::fs;
 
+pub mod db_repo;
 use crate::util::*;
 
 pub struct Repository<T> {

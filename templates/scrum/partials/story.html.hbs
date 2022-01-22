@@ -1,16 +1,20 @@
 <div class="story" data-story="{{this.id}}" data-parent="{{this.parent}}" draggable="true"
   ondragstart="onDragStart(event)" ondrop="onDrop(event)" ondragover="onDragOver(event)">
-  <div class="content draggable dropzone">
+      <div class="progress">
+          <div style="width: {{this.progress}}%">
+          </div>
+      </div>
     <div class="title">
       <img src="{{image this.img}}" height="64">
       <h3 class="field" data-for="{{this.id}}" data-field="title" data-original="{{this.title}}">
         {{this.title}}
       </h3>
       <div>
-          <div onclick="toggleDone(event)" data-for="{{this.id}}" class="isDone {{this.done}}"></div>
           <span class="field" data-for="{{this.id}}" data-field="points" data-original="{{this.points}}">{{this.points}}</span>
+          <div onclick="toggleDone(event)" data-for="{{this.id}}" class="isDone {{this.done}}"></div>
       </div>
     </div>
+  <div class="content draggable dropzone">
     <p>
       {{this.id}}
     </p>

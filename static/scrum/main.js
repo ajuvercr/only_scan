@@ -68,8 +68,12 @@ function handleEdit(event) {
     if(editing.has(id)) {
         event.target.innerText = "Edit";
         editing.delete(id);
-        story.setAttribute("draggable", "true");
 
+        let current = story;
+        while (current && current.classList.contains("story")) {
+            current.setAttribute("draggable", "true");
+            current = current.parentElement.parentElement;
+        }
         const fields = story.getElementsByClassName("field");
         const obj = {};
 
@@ -94,10 +98,10 @@ function handleEdit(event) {
            body: JSON.stringify(obj)
          }).then(console.log);
     } else {
+
         event.target.innerText = "Save";
         editing.add(id);
 
-        story.setAttribute("draggable", "false");
 
         const fields = story.getElementsByClassName("field");
 
@@ -106,6 +110,12 @@ function handleEdit(event) {
             fields[i].setAttribute("contentEditable", "true");
         }
         console.log(fields);
+
+        let current = story;
+        while (current && current.classList.contains("story")) {
+            current.setAttribute("draggable", "false");
+            current = current.parentElement.parentElement;
+        }
     }
 }
 
