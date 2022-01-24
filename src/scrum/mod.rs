@@ -134,30 +134,23 @@ fn patch_child(mut db_conn: DbConn, id: i32, update: Json<TaskBuilder>) -> Optio
 }
 
 #[get("/")]
-fn get(tasks: &State<Repo<Tasks>>) -> Template {
-    let ctx = tasks.with(|tasks| {
-        let tasks: Vec<_> = tasks
-            .values()
-            .filter(|x| x.parent.is_none())
-            .flat_map(|t| t.to_value(tasks))
-            .collect();
-        rocket::serde::json::serde_json::json!({ "tasks": tasks })
-    });
+fn get(mut db_conn: DbConn) -> Option<Template> {
+    let tasks = get_tasks(&mut db_conn).ok()?;
+    let tasks = tasks
+        .values()
+        .filter(|x| x.parent.is_none())
+        .flat_map(|t: &Task| t.to_value(&tasks))
+        .collect::<Vec<_>>();
+    let ctx = rocket::serde::json::serde_json::json!({ "tasks": tasks });
 
-    Template::render("scrum/index", ctx)
+    Some(Template::render("scrum/index", ctx))
 }
 
 pub fn fuel(rocket: Rocket<Build>) -> Rocket<Build> {
     rocket
         .mount(
             "/scrum",
-            routes![
-                get,
-                get_one,
-                create_one,
-                patch_child,
-                swap_parent,
-            ],
+            routes![get, get_one, create_one, patch_child, swap_parent,],
         )
         .attach(AdHoc::config::<ScrumConfig>())
         .attach(Repo::<Tasks>::adhoc(

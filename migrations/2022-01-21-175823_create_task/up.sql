@@ -6,7 +6,7 @@ CREATE TABLE tasks (
   title VARCHAR NOT NULL,
   description VARCHAR NOT NULL DEFAULT '',
   points integer NOT NULL DEFAULT 0,
-  parent VARCHAR,
+  parent integer,
   children integer[] NOT NULL DEFAULT array[]::integer[]
 );
 

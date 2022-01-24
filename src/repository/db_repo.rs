@@ -91,6 +91,7 @@ where
 mod tests {
     use super::*;
     use crate::scrum::models::*;
+    use crate::scrum::TASK_TABLE;
 
     #[cfg(test)]
     fn establish_connection() -> Conn {
@@ -100,19 +101,15 @@ mod tests {
 
     #[test]
     fn test_get() {
-        let repo = Repo {
-            table: tasks::table,
-        };
-
         let mut conn = establish_connection();
-        let all = repo.get_all::<Task>(&mut conn);
+        let all = TASK_TABLE.get_all(&mut conn);
 
         println!("{:?}", all);
         assert!(all.is_ok());
 
         let l = all.unwrap().len();
 
-        let insert: QueryResult<Task> = repo.insert_one(
+        let insert: QueryResult<Task> = TASK_TABLE.insert_one(
             TaskNew {
                 title: String::from("test"),
             },
@@ -122,7 +119,7 @@ mod tests {
         println!("{:?}", insert);
         assert!(insert.is_ok());
 
-        let all = repo.get_all::<Task>(&mut conn);
+        let all = TASK_TABLE.get_all(&mut conn);
         println!("{:?}", all);
         assert!(all.is_ok());
         let l2 = all.unwrap().len();

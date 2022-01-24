@@ -24,19 +24,12 @@ async function onDrop(event) {
 
     console.log("parent", parent, "story", story, "new_parent", new_parent);
 
-    await fetch(`/scrum/${story}`, {
-       method: "PATCH",
-       headers: {  
-        'Content-Type': 'application/json'
-       },
-       body: JSON.stringify({"parent": new_parent})
-     })
+    let url = `/scrum/${story}?`;
+    if(new_parent) url += `new_parent=${new_parent}&`;
+    if(parent) url += `parent=${parent}`;
 
-    await fetch(`/scrum/${new_parent}/sub/${story}`, {method: "POST"});
+    await fetch(url, {method: "POST"});
 
-    if (parent) {
-        await fetch(`/scrum/${parent}/sub/${story}`, {method: "DELETE"});
-    }
 
     location.reload();
 }
