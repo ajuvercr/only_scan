@@ -16,29 +16,16 @@ use models::{Task, TaskBuilder, TaskNew};
 
 use self::models::tasks;
 
-fn add<T, R: Into<T>>(to: &mut Vec<T>, t: R) {
-    to.push(t.into());
-}
-
-fn remove<T: 'static, R: 'static + ?Sized>(to: &mut Vec<T>, t: &R)
-where
-    T: std::cmp::PartialEq<R>,
-{
-    to.retain(|x| !x.eq(t));
-}
-
 pub type Tasks = HashMap<i32, Task>;
 
 pub fn get_tasks(conn: &mut Conn) -> QueryResult<Tasks> {
-    let vec = Task::table().get_all(conn)?;
+    let vec = TASK_TABLE.get_all(conn)?;
     Ok(vec.into_iter().map(|t| (t.id, t)).collect::<Tasks>())
 }
 
-impl Task {
-    pub fn table() -> DbRepo<Self, tasks::table> {
-        DbRepo::new()
-    }
+pub const TASK_TABLE: DbRepo<Task, tasks::table> = DbRepo::new_t(tasks::table);
 
+impl Task {
     pub fn get_points(&self, tasks: &Tasks) -> (i32, i32) {
         let mut out = (0, 0);
 
@@ -99,40 +86,50 @@ fn create_one(mut db_conn: DbConn) -> Option<Redirect> {
     let task_new = TaskNew {
         title: String::from("new"),
     };
-    Task::table().insert_one(task_new, &mut db_conn).ok()?;
+    TASK_TABLE.insert_one(task_new, &mut db_conn).ok()?;
     Redirect::to("/scrum").into()
 }
 
 #[get("/<id>")]
 fn get_one(mut db_conn: DbConn, id: i32) -> Option<Template> {
     let tasks = get_tasks(&mut db_conn).ok()?;
-    let task = Task::table().get_by_id(id, &mut db_conn).ok()?;
+    let task = TASK_TABLE.get_by_id(id, &mut db_conn).ok()?;
     Template::render("scrum/detail", task.to_value(&tasks)).into()
 }
 
-#[post("/<id>/sub/<child>")]
-fn add_child(tasks: &State<Repo<Tasks>>, id: i32, child: i32) -> Option<()> {
-    todo!()
-    //tasks.with_save(|tasks| tasks.get_mut(&id).map(|t| add(&mut t.children, child)))
-}
+#[post("/<id>?<new_parent>&<old_parent>")]
+fn swap_parent(
+    mut db_conn: DbConn,
+    id: i32,
+    new_parent: Option<i32>,
+    old_parent: Option<i32>,
+) -> Option<()> {
+    if let Some(np) = new_parent {
+        let mut children = TASK_TABLE.get_by_id(np, &mut db_conn).ok()?.children;
+        children.push(id);
+        TASK_TABLE
+            .update_by_id(np, Task::builder().with_children(children), &mut db_conn)
+            .ok()?;
+    }
+    if let Some(op) = old_parent {
+        let mut children = TASK_TABLE.get_by_id(op, &mut db_conn).ok()?.children;
+        children.retain(|&x| x != id);
+        TASK_TABLE
+            .update_by_id(op, Task::builder().with_children(children), &mut db_conn)
+            .ok()?;
+    }
 
-#[delete("/<id>/sub/<child>")]
-fn remove_child(tasks: &State<Repo<Tasks>>, id: i32, child: i32) -> Option<()> {
-    todo!()
-    //tasks.with_save(|tasks| tasks.get_mut(&id).map(|t| remove(&mut t.children, &child)))
+    TASK_TABLE
+        .update_by_id(id, Task::builder().with_parent(new_parent), &mut db_conn)
+        .ok()?;
+
+    Some(())
 }
 
 #[patch("/<id>", data = "<update>")]
 fn patch_child(mut db_conn: DbConn, id: i32, update: Json<TaskBuilder>) -> Option<()> {
-use crate::diesel::RunQueryDsl;
-use crate::diesel::QueryDsl;
-
-use std::ops::DerefMut;
     let update = update.into_inner();
-    println!("patch to {} with {:?}", id, update);
-        let find = tasks::table.find(id);
-        diesel::update(find).set(update.clone()).execute( db_conn.deref_mut());
-        Task::table().update_by_id(id, update, &mut db_conn).ok()?;
+    TASK_TABLE.update_by_id(id, update, &mut db_conn).ok()?;
     Some(())
 }
 
@@ -159,8 +156,7 @@ pub fn fuel(rocket: Rocket<Build>) -> Rocket<Build> {
                 get_one,
                 create_one,
                 patch_child,
-                remove_child,
-                add_child
+                swap_parent,
             ],
         )
         .attach(AdHoc::config::<ScrumConfig>())

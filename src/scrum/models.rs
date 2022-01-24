@@ -8,7 +8,7 @@ table! {
         title -> Varchar,
         description -> Varchar,
         points -> Int4,
-        parent -> Nullable<Varchar>,
+        parent -> Nullable<Int4>,
         children -> Array<Int4>,
     }
 }
@@ -29,7 +29,7 @@ pub struct Task {
     #[no_new]
     pub points: i32,
     #[no_new]
-    pub parent: Option<String>,
+    pub parent: Option<i32>,
     #[no_new]
     pub children: Vec<i32>,
 }

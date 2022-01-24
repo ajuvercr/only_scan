@@ -10,17 +10,24 @@ use diesel::associations::HasTable;
 use diesel::query_builder::*;
 use diesel::query_dsl::methods::*;
 pub struct Repo<U, Table> {
-    table: Table,
-    pd: PhantomData<U>,
+    pub table: Table,
+    pub pd: PhantomData<U>,
 }
 
 impl<U, T: Table + Copy> Repo<U, T> {
     pub fn new() -> Self
     where
-        T: LoadQuery<Conn, U> + HasTable<Table = T>,
+        T: HasTable<Table = T>,
     {
         Self {
             table: T::table(),
+            pd: PhantomData,
+        }
+    }
+
+    pub const fn new_t(table: T) -> Self {
+        Self {
+            table,
             pd: PhantomData,
         }
     }
@@ -55,23 +62,20 @@ where
 {
     pub fn update_by_id<U, PK, S>(&self, id: PK, update: U, conn: &mut Conn) -> QueryResult<usize>
     where
-       Tab: FindDsl<PK, Output=S>,
-       S: IntoUpdateTarget,
-       <S as IntoUpdateTarget>::WhereClause: QueryFragment<Backend>,
-       S: HasTable<Table=Tab>,
-       U: AsChangeset<Target = Tab>,
-       <U as AsChangeset>::Changeset: QueryFragment<Backend>,
+        Tab: FindDsl<PK, Output = S>,
+        S: IntoUpdateTarget + HasTable<Table = Tab>,
+        <S as IntoUpdateTarget>::WhereClause: QueryFragment<Backend>,
+        U: AsChangeset<Target = Tab>,
+        <U as AsChangeset>::Changeset: QueryFragment<Backend>,
     {
         let find: S = self.table.find(id);
-        diesel::update(find).set(update).execute(conn);
-        Ok(0)
+        diesel::update(find).set(update).execute(conn)
     }
 }
 
 impl<O, Tab> Repo<O, Tab>
 where
     Tab: Table + Copy,
-    //    <Tab as Table>::AllColumns: QueryFragment<Backend>,
     <Tab as QuerySource>::FromClause: QueryFragment<Backend>,
 {
     pub fn insert_one<U: 'static, Values>(&self, insert: U, conn: &mut Conn) -> QueryResult<O>

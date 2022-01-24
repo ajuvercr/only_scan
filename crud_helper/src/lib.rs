@@ -261,7 +261,7 @@ fn with_field(f: Field) -> TokenStream2 {
         quote! {}
     } else {
         quote! {
-           fn #fun_ident(mut self, t: #ty)-> Self {
+           pub fn #fun_ident(mut self, t: #ty)-> Self {
              self.#f_ident = t.into();
              self
            }

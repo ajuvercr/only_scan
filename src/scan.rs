@@ -6,7 +6,6 @@ use rocket::serde::json::serde_json::json;
 use rocket::serde::{Deserialize, Serialize};
 use rocket::State;
 use rocket::{Build, Rocket};
-use rocket_dyn_templates::handlebars::handlebars_helper;
 use rocket_dyn_templates::Template;
 use std::io::Write;
 
@@ -91,6 +90,7 @@ struct Scan {
     items: Vec<ScanItem>,
 }
 
+#[allow(deprecated)]
 impl Scan {
     fn delete(&mut self, id: &str) {
         self.items.retain(|x| x.id != id);
