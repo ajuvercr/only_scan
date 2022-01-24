@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use crate::Conn;
 use diesel::prelude::*;
 
@@ -7,62 +9,76 @@ use diesel::associations::HasTable;
 
 use diesel::query_builder::*;
 use diesel::query_dsl::methods::*;
-pub struct Repo<Table> {
+pub struct Repo<U, Table> {
     table: Table,
+    pd: PhantomData<U>,
 }
 
-impl<Tab: Table + Copy> Repo<Tab> {
-    pub fn get_by_id<U, PK>(&self, id: PK, conn: &mut Conn) -> Option<U>
+impl<U, T: Table + Copy> Repo<U, T> {
+    pub fn new() -> Self
+    where
+        T: LoadQuery<Conn, U> + HasTable<Table = T>,
+    {
+        Self {
+            table: T::table(),
+            pd: PhantomData,
+        }
+    }
+}
+
+impl<U, Tab: Table + Copy> Repo<U, Tab> {
+    pub fn get_by_id<PK>(&self, id: PK, conn: &mut Conn) -> QueryResult<U>
     where
         Tab: FindDsl<PK>,
         Find<Tab, PK>: LimitDsl,
         Limit<Find<Tab, PK>>: LoadQuery<Conn, U>,
     {
-        FindDsl::find(self.table, id).limit(1).get_result(conn).ok()
+        FindDsl::find(self.table, id).limit(1).get_result(conn)
     }
+}
 
-    pub fn get_all<U>(&self, conn: &mut Conn) -> Option<Vec<U>>
-    where
-        Tab: LoadQuery<Conn, U>,
-    {
-        self.table.load(conn).ok()
+impl<U, Tab: Table + Copy> Repo<U, Tab>
+where
+    Tab: LoadQuery<Conn, U>,
+{
+    pub fn get_all(&self, conn: &mut Conn) -> QueryResult<Vec<U>> {
+        self.table.load(conn)
     }
 }
 
 type Backend = <Conn as Connection>::Backend;
 
-impl<Tab> Repo<Tab>
+impl<T, Tab> Repo<T, Tab>
 where
-    Tab: Table + Copy + IntoUpdateTarget,
+    Tab: Table + Copy + IntoUpdateTarget + HasTable<Table = Tab>,
     <Tab as QuerySource>::FromClause: QueryFragment<Backend>,
 {
-    pub fn update_by_id<U, PK>(&self, id: PK, update: U, conn: &mut Conn) -> Option<usize>
+    pub fn update_by_id<U, PK, F>(&self, id: PK, update: U, conn: &mut Conn) -> QueryResult<usize>
     where
-        U: AsChangeset<Target = Find<Tab, PK>>,
+        U: AsChangeset<Target = Tab>,
         <U as AsChangeset>::Changeset: QueryFragment<Backend>,
 
-        Tab: FindDsl<PK, Output = Tab>,
-        Find<Tab, PK>: HasTable<Table = Tab>,
-
-        <Find<Tab, PK> as IntoUpdateTarget>::WhereClause: QueryFragment<Backend>,
+        UpdateTarget<Tab, <Tab as IntoUpdateTarget>::WhereClause>: FindDsl<PK, Output = F>,
+        F: Query + Table,
     {
-        let find: Find<Tab, PK> = self.table.find(id);
-        diesel::update(find).set(update).execute(conn).ok()
+        //let find: S = self.table.find(id);
+        diesel::update(self.table).find(id).set(update).execute(conn)
+        //diesel::update(find).set(update).execute(conn)
     }
 }
 
-impl<Tab> Repo<Tab>
+impl<O, Tab> Repo<O, Tab>
 where
     Tab: Table + Copy,
-    <Tab as Table>::AllColumns: QueryFragment<Backend>,
+    //    <Tab as Table>::AllColumns: QueryFragment<Backend>,
     <Tab as QuerySource>::FromClause: QueryFragment<Backend>,
 {
-    pub fn insert_one<U: 'static, Values>(&self, insert: U, conn: &mut Conn) -> Option<U>
+    pub fn insert_one<U: 'static, Values>(&self, insert: U, conn: &mut Conn) -> QueryResult<O>
     where
         U: Insertable<Tab, Values = Values>,
-        InsertStatement<Tab, Values>: LoadQuery<Conn, U>,
+        InsertStatement<Tab, Values>: LoadQuery<Conn, O>,
     {
-        insert.insert_into(self.table).get_result::<U>(conn).ok()
+        insert.insert_into(self.table).get_result::<O>(conn)
     }
 }
 
@@ -86,30 +102,25 @@ mod tests {
         let mut conn = establish_connection();
         let all = repo.get_all::<Task>(&mut conn);
 
-        assert!(all.is_some());
+        println!("{:?}", all);
+        assert!(all.is_ok());
 
         let l = all.unwrap().len();
 
-        let insert = repo.insert_one(
-            Task {
-                id: 0,
-                done: false,
-                img: None,
+        let insert: QueryResult<Task> = repo.insert_one(
+            TaskNew {
                 title: String::from("test"),
-                description: String::from("test"),
-                points: 5,
-                parent: None,
-                children: Vec::new(),
             },
             &mut conn,
         );
 
-        assert!(insert.is_some());
+        println!("{:?}", insert);
+        assert!(insert.is_ok());
 
         let all = repo.get_all::<Task>(&mut conn);
-        assert!(all.is_some());
         println!("{:?}", all);
+        assert!(all.is_ok());
         let l2 = all.unwrap().len();
-        assert_eq!(l2, l+1);
+        assert_eq!(l2, l + 1);
     }
 }

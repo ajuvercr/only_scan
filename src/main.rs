@@ -29,10 +29,17 @@ pub mod vision;
 #[cfg(test)]
 mod tests;
 
-use rocket::Route;
+use r2d2_diesel::ConnectionManager;
+use rocket::{
+    http::Status,
+    request::{self, FromRequest, Outcome},
+    Request, Route, State,
+};
 use rocket_dyn_templates::{handlebars::handlebars_helper, Template};
 
 pub type Conn = diesel::PgConnection;
+pub type Pool = r2d2::Pool<ConnectionManager<Conn>>;
+
 #[get("/")]
 async fn index() -> Template {
     Template::render("index", ())
@@ -53,13 +60,51 @@ handlebars_helper!(image: |name: Json| {
     }
 });
 
+fn database_url() -> String {
+    "postgres://onlyscan:password@localhost/diesel_demo".to_string()
+}
+
+pub fn init_pool() -> Pool {
+    let manager = ConnectionManager::new(database_url());
+    Pool::new(manager).expect("db pool failed")
+}
+
+pub struct DbConn(pub r2d2::PooledConnection<ConnectionManager<Conn>>);
+
+impl std::ops::Deref for DbConn {
+    type Target = Conn;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for DbConn {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for DbConn {
+    type Error = ();
+
+    async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
+        let pool: &State<Pool> = req.guard().await.unwrap();
+        match pool.get() {
+            Ok(conn) => Outcome::Success(DbConn(conn)),
+            Err(_) => Outcome::Failure((Status::ServiceUnavailable, ())),
+        }
+    }
+}
+
 #[launch]
 fn rocket() -> _ {
     let statics: Vec<Route> = serve::StaticFiles::new("static", serve::Options::DotFiles).into();
 
     let rocket = rocket::build()
         .mount("/", routes![index])
-        .mount("/static", statics);
+        .mount("/static", statics)
+        .manage(init_pool());
     let rocket = desk::fuel(rocket);
     let rocket = scan::fuel(rocket);
     let rocket = scrum::fuel(rocket);

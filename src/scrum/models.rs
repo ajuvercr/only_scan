@@ -1,5 +1,4 @@
 use rocket::serde::{Deserialize, Serialize};
-use crate::Conn;
 
 table! {
     tasks (id) {
@@ -13,30 +12,24 @@ table! {
         children -> Array<Int4>,
     }
 }
-
-#[derive(Queryable, Insertable, Builder, Deserialize, Serialize, Debug, Clone)]
-#[inner(#[derive(FromForm, Deserialize, Serialize, Debug, AsChangeset, Clone)] #[table_name = "tasks"])]
+#[derive(Queryable, Builder, New, Deserialize, Serialize, Debug, Clone)]
+#[inner_builder(#[derive(FromForm, Deserialize, Serialize, Debug, AsChangeset, Clone)] #[table_name = "tasks"])]
+#[inner_new(#[derive(FromForm, Queryable, Deserialize, Serialize, Debug, Insertable, Clone)] #[table_name = "tasks"])]
 pub struct Task {
     #[no_builder]
+    #[no_new]
     pub id: i32,
+    #[no_new]
     pub done: bool,
+    #[no_new]
     pub img: Option<String>,
     pub title: String,
+    #[no_new]
     pub description: String,
+    #[no_new]
     pub points: i32,
+    #[no_new]
     pub parent: Option<String>,
+    #[no_new]
     pub children: Vec<i32>,
-}
-
-use diesel::prelude::*;
-impl Task {
-    fn get_by_id(id: i32, conn: &mut Conn) -> Option<Self> {
-        tasks::table.find(id).first::<Task>(conn).ok()
-    }
-
-    fn update_by_id(id: i32, update: TaskBuilder, conn: &mut Conn) -> Option<usize> {
-        diesel::update(tasks::table.find(id)).set(update).execute(conn).ok()
-        // diesel::update(tasks::table).filter(tasks::id.eq(id)).set(update).execute(conn).ok()
-    }
-
 }

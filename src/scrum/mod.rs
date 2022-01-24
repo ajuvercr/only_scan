@@ -1,30 +1,20 @@
 use std::collections::HashMap;
 
+use diesel::QueryResult;
 use rocket::fairing::AdHoc;
 use rocket::response::Redirect;
 use rocket::serde::json::{serde_json, Json, Value};
-use rocket::serde::{Deserialize, Serialize};
+use rocket::serde::Deserialize;
 use rocket::{Build, Rocket, State};
 use rocket_dyn_templates::Template;
 
+use crate::repository::db_repo::Repo as DbRepo;
 use crate::repository::Repository as Repo;
-use crate::util::id;
+use crate::{Conn, DbConn};
 pub mod models;
-mod schema;
+use models::{Task, TaskBuilder, TaskNew};
 
-#[derive(Builder, Deserialize, Serialize, Debug, Clone)]
-#[inner(#[derive(FromForm, Deserialize, Serialize, Debug)])]
-pub struct Task {
-    #[no_builder]
-    id: String,
-    done: bool,
-    img: Option<String>,
-    title: String,
-    description: String,
-    points: usize,
-    parent: Option<String>,
-    sub_tasks: Vec<String>,
-}
+use self::models::tasks;
 
 fn add<T, R: Into<T>>(to: &mut Vec<T>, t: R) {
     to.push(t.into());
@@ -37,23 +27,19 @@ where
     to.retain(|x| !x.eq(t));
 }
 
-pub type Tasks = HashMap<String, Task>;
+pub type Tasks = HashMap<i32, Task>;
+
+pub fn get_tasks(conn: &mut Conn) -> QueryResult<Tasks> {
+    let vec = Task::table().get_all(conn)?;
+    Ok(vec.into_iter().map(|t| (t.id, t)).collect::<Tasks>())
+}
 
 impl Task {
-    pub fn new() -> Self {
-        Self {
-            id: id(),
-            done: false,
-            img: None,
-            title: String::from("Some title"),
-            description: String::from("Some description"),
-            points: 0,
-            parent: None,
-            sub_tasks: Vec::new(),
-        }
+    pub fn table() -> DbRepo<Self, tasks::table> {
+        DbRepo::new()
     }
 
-    pub fn get_points(&self, tasks: &Tasks) -> (usize, usize) {
+    pub fn get_points(&self, tasks: &Tasks) -> (i32, i32) {
         let mut out = (0, 0);
 
         if self.done {
@@ -61,7 +47,7 @@ impl Task {
         }
         out.1 += self.points;
 
-        for s in &self.sub_tasks {
+        for s in &self.children {
             let (x, y) = tasks[s].get_points(tasks);
             out.0 += x;
             out.1 += y;
@@ -77,7 +63,7 @@ impl Task {
         };
 
         let value_tasks = self
-            .sub_tasks
+            .children
             .iter()
             .flat_map(|t| tasks[t].to_value(tasks))
             .collect::<Vec<_>>();
@@ -88,10 +74,7 @@ impl Task {
         out.insert(String::from("total"), Value::Number(total.into()));
 
         if total == 0 {
-            out.insert(
-                String::from("progress"),
-                    Value::Number(0.into()),
-            );
+            out.insert(String::from("progress"), Value::Number(0.into()));
         } else {
             out.insert(
                 String::from("progress"),
@@ -112,44 +95,45 @@ fn default_location() -> String {
 }
 
 #[post("/new")]
-fn create_one(tasks: &State<Repo<Tasks>>) -> Redirect {
-    tasks.with_save(|tasks| {
-        let new = Task::new();
-        let id = new.id.clone();
-        tasks.insert(id, new);
-    });
-    Redirect::to("/scrum")
+fn create_one(mut db_conn: DbConn) -> Option<Redirect> {
+    let task_new = TaskNew {
+        title: String::from("new"),
+    };
+    Task::table().insert_one(task_new, &mut db_conn).ok()?;
+    Redirect::to("/scrum").into()
 }
 
 #[get("/<id>")]
-fn get_one(tasks: &State<Repo<Tasks>>, id: &str) -> Template {
-    let ctx = tasks.with(|tasks| tasks[id].to_value(tasks));
-    println!("ctx {:?}", ctx);
-    Template::render("scrum/detail", ctx)
+fn get_one(mut db_conn: DbConn, id: i32) -> Option<Template> {
+    let tasks = get_tasks(&mut db_conn).ok()?;
+    let task = Task::table().get_by_id(id, &mut db_conn).ok()?;
+    Template::render("scrum/detail", task.to_value(&tasks)).into()
 }
 
 #[post("/<id>/sub/<child>")]
-fn add_child(tasks: &State<Repo<Tasks>>, id: &str, child: &str) -> Option<()> {
-    tasks.with_save(|tasks| tasks.get_mut(id).map(|t| add(&mut t.sub_tasks, child)))
+fn add_child(tasks: &State<Repo<Tasks>>, id: i32, child: i32) -> Option<()> {
+    todo!()
+    //tasks.with_save(|tasks| tasks.get_mut(&id).map(|t| add(&mut t.children, child)))
 }
 
 #[delete("/<id>/sub/<child>")]
-fn remove_child(tasks: &State<Repo<Tasks>>, id: &str, child: &str) -> Option<()> {
-    tasks.with_save(|tasks| tasks.get_mut(id).map(|t| remove(&mut t.sub_tasks, child)))
+fn remove_child(tasks: &State<Repo<Tasks>>, id: i32, child: i32) -> Option<()> {
+    todo!()
+    //tasks.with_save(|tasks| tasks.get_mut(&id).map(|t| remove(&mut t.children, &child)))
 }
 
 #[patch("/<id>", data = "<update>")]
-fn patch_child(tasks: &State<Repo<Tasks>>, id: &str, update: Json<TaskBuilder>) -> Option<()> {
+fn patch_child(mut db_conn: DbConn, id: i32, update: Json<TaskBuilder>) -> Option<()> {
+use crate::diesel::RunQueryDsl;
+use crate::diesel::QueryDsl;
+
+use std::ops::DerefMut;
     let update = update.into_inner();
     println!("patch to {} with {:?}", id, update);
-    tasks.with_save(|tasks| {
-        tasks.get_mut(id).map(|t| {
-            t.update(update);
-            if t.parent.as_ref().map(|x| x.is_empty()).unwrap_or(false) {
-                t.parent = None;
-            }
-        })
-    })
+        let find: u32 = tasks::table.find(id);
+        diesel::update(find).set(update).execute( db_conn.deref_mut());
+        Task::table().update_by_id(id, update, &mut db_conn).ok()?;
+    Some(())
 }
 
 #[get("/")]

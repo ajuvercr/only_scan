@@ -6,7 +6,13 @@ use syn::{
     parse::Error, punctuated::Punctuated, spanned::Spanned, token::Comma, DeriveInput, Field,
 };
 
-const ATTRIBUTES: [&'static str; 3] = ["inner", "no_builder", "use_default"];
+const ATTRIBUTES: [&'static str; 5] = [
+    "inner_builder",
+    "inner_new",
+    "no_builder",
+    "use_default",
+    "no_new",
+];
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -17,7 +23,7 @@ where
     attrs.iter().find(|f| f.path.is_ident(i)).is_some()
 }
 
-#[proc_macro_derive(Builder, attributes(inner, no_builder, use_default))]
+#[proc_macro_derive(Builder, attributes(inner_builder, no_builder, use_default))]
 pub fn builder_derive(input: TokenStream) -> TokenStream {
     let ast: DeriveInput = syn::parse(input).unwrap();
 
@@ -26,6 +32,15 @@ pub fn builder_derive(input: TokenStream) -> TokenStream {
             println!("{}", x);
             x.into()
         }
+        Err(e) => e.into_compile_error().into(),
+    }
+}
+
+#[proc_macro_derive(New, attributes(inner_new, no_new))]
+pub fn new_derive(input: TokenStream) -> TokenStream {
+    let ast: DeriveInput = syn::parse(input).unwrap();
+    match apply_new(ast) {
+        Ok(x) => x.into(),
         Err(e) => e.into_compile_error().into(),
     }
 }
@@ -254,8 +269,12 @@ fn with_field(f: Field) -> TokenStream2 {
     }
 }
 
-fn get_inner_attr(attributes: &Vec<syn::Attribute>) -> Option<TokenStream2> {
-    attributes.iter().filter(|f| f.path.is_ident("inner")).flat_map(|x| x.parse_args()).next()
+fn get_inner_attr(attributes: &Vec<syn::Attribute>, path: &str) -> Option<TokenStream2> {
+    attributes
+        .iter()
+        .filter(|f| f.path.is_ident(path))
+        .flat_map(|x| x.parse_args())
+        .next()
 }
 
 fn apply_crud(ast: DeriveInput) -> Result<TokenStream> {
@@ -274,7 +293,7 @@ fn apply_crud(ast: DeriveInput) -> Result<TokenStream> {
     let mut new_ast = ast.clone();
     set_fields(&mut new_ast, option_fields)?;
 
-    let inner_attr = get_inner_attr(&new_ast.attrs);
+    let inner_attr = get_inner_attr(&new_ast.attrs, "inner_builder");
     new_ast.attrs = Vec::new();
     clean_attrs(&mut new_ast.attrs);
     new_ast.ident = syn::Ident::new(&format!("{}Builder", ast.ident), ast.ident.span());
@@ -300,6 +319,34 @@ fn apply_crud(ast: DeriveInput) -> Result<TokenStream> {
      impl #generics #ident #generics {
          #field_impls
      }
+    };
+
+    Ok(quoted.into())
+}
+
+fn apply_new(ast: DeriveInput) -> Result<TokenStream> {
+    let mut new_ast = ast.clone();
+
+    let fields = get_fields(&ast)?;
+    let new_fields: Vec<_> = fields
+        .iter()
+        .filter(|f| !has_attr(&f.attrs, "no_new"))
+        .cloned()
+        .map(|mut x| {
+            clean_attrs(&mut x.attrs);
+            x
+        })
+        .collect();
+
+    let inner_attr = get_inner_attr(&new_ast.attrs, "inner_new");
+    new_ast.attrs = Vec::new();
+    clean_attrs(&mut new_ast.attrs);
+    new_ast.ident = syn::Ident::new(&format!("{}New", ast.ident), ast.ident.span());
+    set_fields(&mut new_ast, new_fields)?;
+
+    let quoted = quote! {
+        #inner_attr
+        #new_ast
     };
 
     Ok(quoted.into())

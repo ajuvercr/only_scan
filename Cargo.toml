@@ -11,7 +11,9 @@ rocket = { version = "0.5.0-rc.1", features = ["json"] }
 serde = { version = "1.0", features = ["derive"] }
 uuid = { version = "0.8", features = ["serde", "v4"] }
 
-diesel = { version = "1.4", features = ["postgres", "chrono"] }
+diesel = { version = "1.4", features = ["postgres", "r2d2", "chrono"] }
+r2d2 = "0.8.9"
+r2d2-diesel = "1.0.0"
 
 feignhttp = { version = "0.3" }
 
@@ -25,6 +27,10 @@ cool-id-generator = "1.0"
 crud_helper = { path = "./crud_helper" }
 
 byteorder = "0.3"
+
+[dependencies.rocket_sync_db_pools]
+version = "0.1.0-rc.1"
+features = ["diesel_postgres_pool"]
 
 [dev-dependencies]
 assert_matches = "1.1"
