@@ -13,6 +13,9 @@
           <span class="field" data-for="{{this.id}}" data-field="points" data-original="{{this.points}}">{{this.points}}</span>
           <div onclick="toggleDone(event)" data-for="{{this.id}}" class="isDone {{this.done}}"></div>
       </div>
+      <div onclick="deleteStory({{this.id}})">
+        X
+      </div>
     </div>
   <div class="content draggable dropzone">
     <p>

@@ -87,6 +87,22 @@ where
     }
 }
 
+impl<O, Tab> Repo<O, Tab>
+where
+    Tab: Table + Copy  + QueryId,
+    <Tab as QuerySource>::FromClause: QueryFragment<Backend>,
+{
+    pub fn delete_by_id<PK, S>(&self, id: PK, conn: &mut Conn) -> QueryResult<usize>
+    where
+        Tab: FindDsl<PK, Output = S>,
+        S: IntoUpdateTarget + HasTable<Table = Tab>,
+        <S as IntoUpdateTarget>::WhereClause: QueryFragment<Backend> + QueryId,
+    {
+        let find: S = self.table.find(id);
+        diesel::delete(find).execute(conn)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

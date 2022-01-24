@@ -112,14 +112,13 @@ fn rocket() -> _ {
     let rocket = oauth::fuel(rocket);
     // This also adds the handlebars fairing
 
-    rocket
-        .attach(Template::custom(|engines| {
-            let handles = &mut engines.handlebars;
-            handles.register_helper("eq", Box::new(eq));
-            handles.register_helper("shorten_cat", Box::new(shorten_cat));
-            handles.register_helper("euro", Box::new(into_euro));
-            handles.register_helper("lower", Box::new(lower));
-            handles.register_helper("image", Box::new(image));
-        }))
-        .attach(debug::Debug)
+    rocket.attach(Template::custom(|engines| {
+        let handles = &mut engines.handlebars;
+        handles.register_helper("eq", Box::new(eq));
+        handles.register_helper("shorten_cat", Box::new(shorten_cat));
+        handles.register_helper("euro", Box::new(into_euro));
+        handles.register_helper("lower", Box::new(lower));
+        handles.register_helper("image", Box::new(image));
+    }))
+    //        .attach(debug::Debug)
 }

@@ -70,6 +70,23 @@ impl Task {
         }
         Some(Value::Object(out))
     }
+
+    fn add_child(id: i32, child: i32, db_conn: &mut Conn) -> Option<()> {
+        let mut children = TASK_TABLE.get_by_id(id, db_conn).ok()?.children;
+        children.push(child);
+        TASK_TABLE
+            .update_by_id(id, Task::builder().with_children(children), db_conn)
+            .ok()?;
+        Some(())
+    }
+    fn remove_child(id: i32, child: i32, db_conn: &mut Conn) -> Option<()> {
+        let mut children = TASK_TABLE.get_by_id(id, db_conn).ok()?.children;
+        children.retain(|&x| x != child);
+        TASK_TABLE
+            .update_by_id(id, Task::builder().with_children(children), db_conn)
+            .ok()?;
+        Some(())
+    }
 }
 
 #[derive(Deserialize, Debug)]
@@ -97,6 +114,19 @@ fn get_one(mut db_conn: DbConn, id: i32) -> Option<Template> {
     Template::render("scrum/detail", task.to_value(&tasks)).into()
 }
 
+#[delete("/<id>")]
+fn delete_one(mut db_conn: DbConn, id: i32) -> Option<Redirect> {
+    let task = TASK_TABLE.get_by_id(id,&mut db_conn).ok()?;
+    if let Some(parent)  = task.parent {
+      Task::remove_child(parent, id, &mut db_conn)?;
+    }
+    for child in &task.children {
+      TASK_TABLE.update_by_id(child, Task::builder().with_parent(task.parent), &mut db_conn).ok()?;
+    }
+    TASK_TABLE.delete_by_id(id, &mut db_conn).ok()?;
+    Redirect::to("/scrum").into()
+}
+
 #[post("/<id>?<new_parent>&<old_parent>")]
 fn swap_parent(
     mut db_conn: DbConn,
@@ -104,19 +134,12 @@ fn swap_parent(
     new_parent: Option<i32>,
     old_parent: Option<i32>,
 ) -> Option<()> {
+    println!("id {}, new {:?} old {:?}", id, new_parent, old_parent);
     if let Some(np) = new_parent {
-        let mut children = TASK_TABLE.get_by_id(np, &mut db_conn).ok()?.children;
-        children.push(id);
-        TASK_TABLE
-            .update_by_id(np, Task::builder().with_children(children), &mut db_conn)
-            .ok()?;
+        Task::add_child(np, id, &mut db_conn)?;
     }
     if let Some(op) = old_parent {
-        let mut children = TASK_TABLE.get_by_id(op, &mut db_conn).ok()?.children;
-        children.retain(|&x| x != id);
-        TASK_TABLE
-            .update_by_id(op, Task::builder().with_children(children), &mut db_conn)
-            .ok()?;
+        Task::remove_child(op, id, &mut db_conn)?;
     }
 
     TASK_TABLE
@@ -150,7 +173,7 @@ pub fn fuel(rocket: Rocket<Build>) -> Rocket<Build> {
     rocket
         .mount(
             "/scrum",
-            routes![get, get_one, create_one, patch_child, swap_parent,],
+            routes![get, get_one, delete_one, create_one, patch_child, swap_parent,],
         )
         .attach(AdHoc::config::<ScrumConfig>())
         .attach(Repo::<Tasks>::adhoc(

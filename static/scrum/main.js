@@ -4,6 +4,12 @@ function onDragOver(event) {
 
 var dragged;
 
+async function deleteStory(id) {
+    await fetch(`/scrum/${id}`, {method: "DELETE"});
+    location.reload();
+
+}
+
 async function onDrop(event) {
  event.stopPropagation() ;  event.preventDefault();
 
@@ -24,9 +30,16 @@ async function onDrop(event) {
 
     console.log("parent", parent, "story", story, "new_parent", new_parent);
 
-    let url = `/scrum/${story}?`;
-    if(new_parent) url += `new_parent=${new_parent}&`;
-    if(parent) url += `parent=${parent}`;
+    let url = `/scrum/${story}`;
+    let first = true;
+    if(new_parent) { 
+        url += `${first ? "?" : "&"}new_parent=${new_parent}`;
+        first=false;
+    }
+    if(parent) {
+        url += `${first ? "?" : "&"}old_parent=${parent}`;
+        first=false;
+    }
 
     await fetch(url, {method: "POST"});
 
