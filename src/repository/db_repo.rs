@@ -53,17 +53,18 @@ where
     Tab: Table + Copy + IntoUpdateTarget + HasTable<Table = Tab>,
     <Tab as QuerySource>::FromClause: QueryFragment<Backend>,
 {
-    pub fn update_by_id<U, PK, F>(&self, id: PK, update: U, conn: &mut Conn) -> QueryResult<usize>
+    pub fn update_by_id<U, PK, S>(&self, id: PK, update: U, conn: &mut Conn) -> QueryResult<usize>
     where
-        U: AsChangeset<Target = Tab>,
-        <U as AsChangeset>::Changeset: QueryFragment<Backend>,
-
-        UpdateTarget<Tab, <Tab as IntoUpdateTarget>::WhereClause>: FindDsl<PK, Output = F>,
-        F: Query + Table,
+       Tab: FindDsl<PK, Output=S>,
+       S: IntoUpdateTarget,
+       <S as IntoUpdateTarget>::WhereClause: QueryFragment<Backend>,
+       S: HasTable<Table=Tab>,
+       U: AsChangeset<Target = Tab>,
+       <U as AsChangeset>::Changeset: QueryFragment<Backend>,
     {
-        //let find: S = self.table.find(id);
-        diesel::update(self.table).find(id).set(update).execute(conn)
-        //diesel::update(find).set(update).execute(conn)
+        let find: S = self.table.find(id);
+        diesel::update(find).set(update).execute(conn);
+        Ok(0)
     }
 }
 

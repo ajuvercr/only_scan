@@ -130,8 +130,8 @@ use crate::diesel::QueryDsl;
 use std::ops::DerefMut;
     let update = update.into_inner();
     println!("patch to {} with {:?}", id, update);
-        let find: u32 = tasks::table.find(id);
-        diesel::update(find).set(update).execute( db_conn.deref_mut());
+        let find = tasks::table.find(id);
+        diesel::update(find).set(update.clone()).execute( db_conn.deref_mut());
         Task::table().update_by_id(id, update, &mut db_conn).ok()?;
     Some(())
 }
