@@ -8,6 +8,7 @@ use rocket::serde::Deserialize;
 use rocket::{Build, Rocket, State};
 use rocket_dyn_templates::Template;
 
+use crate::oauth::{User, AuthUser};
 use crate::repository::db_repo::Repo as DbRepo;
 use crate::repository::Repository as Repo;
 use crate::{Conn, DbConn};
@@ -157,7 +158,11 @@ fn patch_child(mut db_conn: DbConn, id: i32, update: Json<TaskBuilder>) -> Optio
 }
 
 #[get("/")]
-fn get(mut db_conn: DbConn) -> Option<Template> {
+fn get(mut db_conn: DbConn, user: AuthUser) -> Option<Result<Template, Redirect>> {
+    if let AuthUser::Err(e) = user {
+        return Some(Err(e.into()));
+    }
+
     let tasks = get_tasks(&mut db_conn).ok()?;
     let tasks = tasks
         .values()
@@ -166,7 +171,7 @@ fn get(mut db_conn: DbConn) -> Option<Template> {
         .collect::<Vec<_>>();
     let ctx = rocket::serde::json::serde_json::json!({ "tasks": tasks });
 
-    Some(Template::render("scrum/index", ctx))
+    Some(Ok(Template::render("scrum/index", ctx)))
 }
 
 pub fn fuel(rocket: Rocket<Build>) -> Rocket<Build> {

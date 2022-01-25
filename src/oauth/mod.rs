@@ -1,6 +1,14 @@
 use feignhttp::feign;
-use rocket::{response::Redirect, Build, Rocket};
+use rocket::{
+    http::{Cookie, CookieJar},
+    response::Redirect,
+    serde::json::serde_json,
+    Build, Rocket,
+};
 use serde::{Deserialize, Serialize};
+
+mod user;
+pub use user::{User, AuthUser, Result as AResult};
 
 const ZAUTH_URL: &str = "http://localhost:8001";
 
@@ -27,11 +35,14 @@ impl TokenReq {
     }
 }
 
+const LOGIN_URL: &'static str ="http://localhost:8001/oauth/authorize?response_type=code&client_id=only-scan&redirect_uri=http://localhost:8000/oauth/callback&state=bla";
+
 #[derive(Debug, Serialize, Deserialize)]
-struct TokenResp {
+pub struct TokenResp {
     access_token: String,
     token_type: String,
     expires_in: i64,
+    info: User,
 }
 
 struct Oauth;
@@ -39,7 +50,7 @@ struct Oauth;
 #[feign(url = ZAUTH_URL)]
 impl Oauth {
     #[post("/oauth/token")]
-    async fn repository(#[form] body: TokenReq) -> feignhttp::Result<String> {}
+    async fn repository(#[form] body: TokenReq) -> feignhttp::Result<TokenResp> {}
 }
 
 #[derive(Debug, FromForm, Serialize, Deserialize)]
@@ -50,23 +61,28 @@ pub struct Callback {
 }
 
 #[get("/callback?<data..>")]
-async fn callback<'r>(data: Callback) -> Option<String> {
+async fn callback<'r>(data: Callback, jar: &CookieJar<'_>) -> Option<String> {
     println!("got callback {:?}", data);
     let resp = Oauth::repository(TokenReq::new(
         data.code.unwrap(),
         "http://localhost:8000/oauth/callback".to_string(),
     ))
-    .await;
+    .await
+    .ok()?;
+
     println!("resp {:?}", resp);
-    // Lets do some code exchange please!
+
+    jar.add_private(Cookie::new(
+        user::COOKIE_NAME,
+        serde_json::to_string(&resp.info).ok()?,
+    ));
+
     Some(format!("{:?}", resp))
 }
 
 #[get("/login")]
-fn login() -> Redirect {
-    let uri = uri!("http://localhost:8001/oauth/authorize?response_type=code&client_id=only-scan&redirect_uri=http://localhost:8000/oauth/callback&state=bla");
-
-    Redirect::to(uri)
+pub fn login() -> Redirect {
+    Redirect::to(LOGIN_URL)
 }
 
 pub fn fuel(rocket: Rocket<Build>) -> Rocket<Build> {

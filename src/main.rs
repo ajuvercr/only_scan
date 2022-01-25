@@ -1,4 +1,5 @@
 #![recursion_limit = "256"]
+#![feature(try_trait_v2)]
 #![feature(const_fn_trait_bound)]
 #[macro_use]
 extern crate rocket;
