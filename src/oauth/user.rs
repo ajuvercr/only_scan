@@ -68,13 +68,16 @@ impl<'r> FromRequest<'r> for AuthUser {
     type Error = Infallible;
 
     async fn from_request(req: &'r Request<'_>) -> Outcome<Self, Self::Error> {
-        let c = req
+        if let Some(c) = req
             .cookies()
             .get_private(COOKIE_NAME)
-            .and_then(|cookie| rocket::serde::json::from_str(cookie.value()).ok())
-            .ok_or(super::login())
-            .into();
-        Outcome::Success(c)
+            .and_then(|cookie| rocket::serde::json::from_str::<User>(cookie.value()).ok())
+        {
+            Outcome::Success(Result::Ok(c))
+        } else {
+            let host = req.guard().await.unwrap();
+            let config = req.guard().await.unwrap();
+            Outcome::Success(Result::Err(super::login(config, host)))
+        }
     }
 }
-

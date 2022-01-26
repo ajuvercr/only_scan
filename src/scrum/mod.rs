@@ -8,7 +8,7 @@ use rocket::serde::Deserialize;
 use rocket::{Build, Rocket, State};
 use rocket_dyn_templates::Template;
 
-use crate::oauth::{User, AuthUser};
+use crate::oauth::{AuthUser, User};
 use crate::repository::db_repo::Repo as DbRepo;
 use crate::repository::Repository as Repo;
 use crate::{Conn, DbConn};
@@ -117,12 +117,18 @@ fn get_one(mut db_conn: DbConn, id: i32) -> Option<Template> {
 
 #[delete("/<id>")]
 fn delete_one(mut db_conn: DbConn, id: i32) -> Option<Redirect> {
-    let task = TASK_TABLE.get_by_id(id,&mut db_conn).ok()?;
-    if let Some(parent)  = task.parent {
-      Task::remove_child(parent, id, &mut db_conn)?;
+    let task = TASK_TABLE.get_by_id(id, &mut db_conn).ok()?;
+    if let Some(parent) = task.parent {
+        Task::remove_child(parent, id, &mut db_conn)?;
     }
     for child in &task.children {
-      TASK_TABLE.update_by_id(child, Task::builder().with_parent(task.parent), &mut db_conn).ok()?;
+        TASK_TABLE
+            .update_by_id(
+                child,
+                Task::builder().with_parent(task.parent),
+                &mut db_conn,
+            )
+            .ok()?;
     }
     TASK_TABLE.delete_by_id(id, &mut db_conn).ok()?;
     Redirect::to("/scrum").into()
@@ -178,7 +184,14 @@ pub fn fuel(rocket: Rocket<Build>) -> Rocket<Build> {
     rocket
         .mount(
             "/scrum",
-            routes![get, get_one, delete_one, create_one, patch_child, swap_parent,],
+            routes![
+                get,
+                get_one,
+                delete_one,
+                create_one,
+                patch_child,
+                swap_parent,
+            ],
         )
         .attach(AdHoc::config::<ScrumConfig>())
         .attach(Repo::<Tasks>::adhoc(

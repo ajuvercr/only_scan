@@ -3,12 +3,48 @@ use std::ops::DerefMut;
 use std::process::Command;
 use std::sync::{Arc, Mutex};
 
+use rocket::outcome::Outcome;
+use rocket::request::{self, FromRequest};
 use rocket::serde::json::serde_json::{self};
 use rocket::serde::{Deserialize, Serialize};
-use rocket::{Orbit, Rocket, State};
+use rocket::{Orbit, Request, Rocket, State};
 use std::fs;
 
 use crate::vision;
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct Config {
+    pub database_url: String,
+    pub oauth_base: String,
+    pub client_id: String,
+    pub client_secret: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct HostHeader<'a>(pub &'a str);
+
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for HostHeader<'r> {
+    type Error = ();
+    async fn from_request(request: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
+        println!("{:?}", request.headers());
+        match request.headers().get_one("Host") {
+            Some(h) => Outcome::Success(HostHeader(h)),
+            None => Outcome::Forward(()),
+        }
+    }
+}
+
+impl<'a> HostHeader<'a> {
+    pub fn get(&self) -> String {
+        if self.0.starts_with("http") {
+            self.0.to_string()
+        } else {
+            eprintln!("No protocol! {:?}", self);
+            format!("http://{}", self.0)
+        }
+    }
+}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Error {

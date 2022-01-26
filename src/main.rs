@@ -33,6 +33,7 @@ mod tests;
 
 use r2d2_diesel::ConnectionManager;
 use rocket::{
+    fairing::AdHoc,
     http::Status,
     request::{self, FromRequest, Outcome},
     Request, Route, State,
@@ -62,12 +63,8 @@ handlebars_helper!(image: |name: Json| {
     }
 });
 
-fn database_url() -> String {
-    "postgres://onlyscan:password@localhost/diesel_demo".to_string()
-}
-
-pub fn init_pool() -> Pool {
-    let manager = ConnectionManager::new(database_url());
+pub fn init_pool(config: &util::Config) -> Pool {
+    let manager = ConnectionManager::new(&config.database_url);
     Pool::new(manager).expect("db pool failed")
 }
 
@@ -102,11 +99,14 @@ impl<'r> FromRequest<'r> for DbConn {
 #[launch]
 fn rocket() -> _ {
     let statics: Vec<Route> = serve::StaticFiles::new("static", serve::Options::DotFiles).into();
+    let rocket = rocket::build();
+    let config: util::Config = rocket.figment().extract().expect("config");
 
-    let rocket = rocket::build()
+    let rocket = rocket
         .mount("/", routes![index])
         .mount("/static", statics)
-        .manage(init_pool());
+        .attach(AdHoc::config::<util::Config>())
+        .manage(init_pool(&config));
     let rocket = desk::fuel(rocket);
     let rocket = scan::fuel(rocket);
     let rocket = scrum::fuel(rocket);
