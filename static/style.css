@@ -21,13 +21,44 @@ a {
   text-decoration: none;
 }
 
-#title {
-  font-size: 3em;
-  padding: 20px;
-  background: #333;
-  color: white;
-  font-weight: bolder;
+
+ul.nav {
+font-size: 2em;
+  list-style-type: none;
   margin: 0;
+  color: white;
+  padding: 0;
+  overflow: hidden;
+  background-color: #333;
+}
+
+.nav li {
+  float: left;
+  border-right:1px solid #bbb;
+}
+
+.nav li:last-child  {
+  border-right: none;
+  float: right;
+}
+.nav li:nth-last-child(2) {
+  border-right: none;
+}
+
+.nav li * {
+  display: block;
+  color: white;
+  text-align: center;
+  padding: 14px 16px;
+  text-decoration: none;
+}
+
+.nav li a:hover:not(.active) {
+  background-color: #111;
+}
+
+.active {
+  background-color: #04AA6D;
 }
 
 .tiles {

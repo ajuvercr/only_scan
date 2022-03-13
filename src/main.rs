@@ -17,17 +17,19 @@ extern crate uuid;
 
 extern crate feignhttp;
 
+mod context;
 mod debug;
 pub mod oauth;
+mod pages;
 pub mod repository;
 mod serve;
 pub mod sorted_list;
 pub mod util;
-mod pages;
 
 #[cfg(test)]
 mod tests;
 
+use context::Context;
 use r2d2_diesel::ConnectionManager;
 use rocket::{
     fairing::AdHoc,
@@ -41,8 +43,8 @@ pub type Conn = diesel::PgConnection;
 pub type Pool = r2d2::Pool<ConnectionManager<Conn>>;
 
 #[get("/")]
-async fn index() -> Template {
-    Template::render("index", ())
+async fn index(context: Context) -> Template {
+    Template::render("index", context.value())
 }
 
 handlebars_helper!(shorten_cat: |x: str|

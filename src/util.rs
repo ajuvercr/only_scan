@@ -10,7 +10,6 @@ use rocket::serde::{Deserialize, Serialize};
 use rocket::{Orbit, Request, Rocket, State};
 use std::fs;
 
-
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Config {
     pub database_url: String,

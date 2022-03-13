@@ -10,9 +10,19 @@
 </head>
 
 <body>
-    <a href="/">
-        <h1 id="title">Hej</h1>
-    </a>
+    <ul id=title class="nav">
+        <li><a href="/">Home</a></li>
+        <li><a href="/desk">Desk</a></li>
+        <li><a href="/scan">Scan Me</a></li>
+        <li><a href="/scrum">SCRUM</a></li>
+        <li>
+        {{#if logged_in}}
+            <div>{{name}}</div>
+        {{else}}
+            <div>Anonymouse</div>
+        {{/if}}
+        </li>
+    </ul>
 
     {{#each errors}}
     <div class="error">
