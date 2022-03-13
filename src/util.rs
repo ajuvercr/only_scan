@@ -10,7 +10,6 @@ use rocket::serde::{Deserialize, Serialize};
 use rocket::{Orbit, Request, Rocket, State};
 use std::fs;
 
-use crate::vision;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Config {
@@ -95,37 +94,6 @@ pub fn read_command<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(cmd: I) -> Optio
     let output = Command::new(first).args(cmd_parts).output().ok()?;
 
     String::from_utf8(output.stdout).ok()
-}
-
-pub fn turn_image(input: &str, output: &str) -> Option<()> {
-    let cmd = read_command(["tesseract", input, "-", "--psm", "0"])?;
-
-    let mut lines = cmd.lines();
-    let rotate = lines
-        .find(|x| x.starts_with("Rotate:"))
-        .unwrap_or("Rotate: 0");
-    let deg: isize = rotate.replace("Rotate:", "").trim().parse().ok()?;
-
-    // convert test.jpg -rotate 90 -edge 10 test2.jpg
-    let deg_s = deg.to_string();
-    read_command([
-        "convert",
-        input,
-        "-rotate",
-        &deg_s,
-        "-trim",
-        "-monochrome",
-        output,
-    ])?;
-
-    Some(())
-}
-
-// gcloud ml vision detect-document ./test.jpg
-pub fn ocr(input: &str) -> Option<vision::Resp> {
-    let str = read_command(["gcloud", "ml", "vision", "detect-document", input])?;
-
-    serde_json::from_str(&str).ok()
 }
 
 pub fn id() -> String {

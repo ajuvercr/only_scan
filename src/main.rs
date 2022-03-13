@@ -18,15 +18,12 @@ extern crate uuid;
 extern crate feignhttp;
 
 mod debug;
-mod desk;
 pub mod oauth;
 pub mod repository;
-mod scan;
-mod scrum;
 mod serve;
 pub mod sorted_list;
 pub mod util;
-pub mod vision;
+mod pages;
 
 #[cfg(test)]
 mod tests;
@@ -107,9 +104,9 @@ fn rocket() -> _ {
         .mount("/static", statics)
         .attach(AdHoc::config::<util::Config>())
         .manage(init_pool(&config));
-    let rocket = desk::fuel(rocket);
-    let rocket = scan::fuel(rocket);
-    let rocket = scrum::fuel(rocket);
+    let rocket = pages::desk::fuel(rocket);
+    let rocket = pages::scan::fuel(rocket);
+    let rocket = pages::scrum::fuel(rocket);
     let rocket = oauth::fuel(rocket);
     // This also adds the handlebars fairing
 

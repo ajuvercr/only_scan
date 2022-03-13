@@ -15,7 +15,7 @@ use rand::{thread_rng, Rng};
 use regex::Regex;
 
 use crate::repository::Repository;
-use crate::util;
+mod vision;
 
 const TEMP_FILE_1: &'static str = "/tmp/file1.jpg";
 const TEMP_FILE_2: &'static str = "/tmp/file2.jpg";
@@ -282,9 +282,9 @@ fn new_get() -> Template {
 #[post("/new", data = "<file>")]
 async fn new_post(mut file: TempFile<'_>, scans: &State<Scans>) -> Option<Redirect> {
     file.persist_to(TEMP_FILE_1).await.ok()?;
-    util::turn_image(TEMP_FILE_1, TEMP_FILE_2)?;
+    vision::turn_image(TEMP_FILE_1, TEMP_FILE_2)?;
 
-    let file = util::ocr(TEMP_FILE_2)?;
+    let file = vision::ocr(TEMP_FILE_2)?;
     let part = file.responses.into_iter().next()?;
     let lines = part.lines();
 

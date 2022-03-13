@@ -1,3 +1,5 @@
+use crate::util;
+use rocket::serde::json::serde_json::{self};
 use rocket::serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -127,4 +129,35 @@ impl Default for Point {
     fn default() -> Self {
         Self { x: 0, y: 0 }
     }
+}
+
+pub fn turn_image(input: &str, output: &str) -> Option<()> {
+    let cmd = util::read_command(["tesseract", input, "-", "--psm", "0"])?;
+
+    let mut lines = cmd.lines();
+    let rotate = lines
+        .find(|x| x.starts_with("Rotate:"))
+        .unwrap_or("Rotate: 0");
+    let deg: isize = rotate.replace("Rotate:", "").trim().parse().ok()?;
+
+    // convert test.jpg -rotate 90 -edge 10 test2.jpg
+    let deg_s = deg.to_string();
+    util::read_command([
+        "convert",
+        input,
+        "-rotate",
+        &deg_s,
+        "-trim",
+        "-monochrome",
+        output,
+    ])?;
+
+    Some(())
+}
+
+// gcloud ml vision detect-document ./test.jpg
+pub fn ocr(input: &str) -> Option<Resp> {
+    let str = util::read_command(["gcloud", "ml", "vision", "detect-document", input])?;
+
+    serde_json::from_str(&str).ok()
 }

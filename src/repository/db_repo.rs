@@ -106,8 +106,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::scrum::models::*;
-    use crate::scrum::TASK_TABLE;
+    use crate::pages::scrum::models::*;
+    use crate::pages::scrum::TASK_TABLE;
 
     #[cfg(test)]
     fn establish_connection() -> Conn {

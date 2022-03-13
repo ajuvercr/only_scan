@@ -5,10 +5,10 @@ use rocket::fairing::AdHoc;
 use rocket::response::Redirect;
 use rocket::serde::json::{serde_json, Json, Value};
 use rocket::serde::Deserialize;
-use rocket::{Build, Rocket, State};
+use rocket::{Build, Rocket};
 use rocket_dyn_templates::Template;
 
-use crate::oauth::{AuthUser, User};
+use crate::oauth::AuthUser;
 use crate::repository::db_repo::Repo as DbRepo;
 use crate::repository::Repository as Repo;
 use crate::{Conn, DbConn};

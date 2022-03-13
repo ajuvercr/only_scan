@@ -9,8 +9,6 @@ use serde::{Deserialize, Serialize};
 mod user;
 pub use user::{AuthUser, Result as AResult, User};
 
-const LOGIN_URL: &'static str ="http://localhost:8001/oauth/authorize?response_type=code&client_id=only-scan&redirect_uri=http://localhost:8000/oauth/callback&state=bla";
-
 #[derive(Debug, Serialize, Deserialize)]
 struct TokenReq {
     grant_type: String,

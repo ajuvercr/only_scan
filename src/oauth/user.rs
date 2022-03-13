@@ -3,7 +3,7 @@ use std::{convert::Infallible, ops::FromResidual};
 use std::ops::{ControlFlow, Try};
 
 use rocket::{
-    request::{self, FromRequest, Outcome},
+    request::{FromRequest, Outcome},
     response::Redirect,
     Request,
 };
