@@ -17,9 +17,11 @@ extern crate uuid;
 
 extern crate feignhttp;
 
+#[macro_use]
+pub mod oauth;
 mod context;
 mod debug;
-pub mod oauth;
+mod fava;
 mod pages;
 pub mod repository;
 mod serve;
@@ -35,7 +37,7 @@ use rocket::{
     fairing::AdHoc,
     http::Status,
     request::{self, FromRequest, Outcome},
-    Request, Route, State,
+    Request, Route, State, routes,
 };
 use rocket_dyn_templates::{handlebars::handlebars_helper, Template};
 
@@ -110,6 +112,7 @@ fn rocket() -> _ {
     let rocket = pages::scan::fuel(rocket);
     let rocket = pages::scrum::fuel(rocket);
     let rocket = oauth::fuel(rocket);
+    let rocket = fava::fuel(rocket);
     // This also adds the handlebars fairing
 
     rocket.attach(Template::custom(|engines| {

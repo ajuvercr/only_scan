@@ -3,7 +3,7 @@ use std::convert::Infallible;
 use crate::oauth::{AResult, AuthUser};
 use rocket::request::{FromRequest, Outcome, Request};
 use rocket::serde::json::serde_json::Map;
-use rocket::serde::json::{json, Value};
+use rocket::serde::json::{self, Value, json};
 
 pub struct Context {
     inner: Map<String, Value>,
@@ -48,11 +48,17 @@ fn merge(target: &mut Map<String, Value>, from: Map<String, Value>) {
     }
 }
 
+
 impl Context {
     pub fn merge(&mut self, obj: Value) {
         let map = to_map(obj);
         merge(&mut self.inner, map);
+   }
+
+    pub fn add<T: Into<Value>>(&mut self, key: &str, value: T) {
+        self.inner.insert(key.to_string(), value.into());
     }
+
     pub fn value(self) -> Value {
         Value::Object(self.inner)
     }

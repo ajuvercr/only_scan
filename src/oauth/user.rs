@@ -60,6 +60,15 @@ impl<T, E> From<std::result::Result<T, E>> for Result<T, E> {
     }
 }
 
+macro_rules! unwrap {
+    ($l:expr) => {
+        match $l {
+            crate::oauth::AuthUser::Ok(user) => user,
+            crate::oauth::AuthUser::Err(e) => return Err(e),
+        }
+    };
+}
+
 pub type AuthUser = Result<User, Redirect>;
 pub const COOKIE_NAME: &'static str = "scan_session";
 

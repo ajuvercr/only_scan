@@ -2,11 +2,12 @@ use rocket::{
     http::{Cookie, CookieJar},
     response::Redirect,
     serde::json::serde_json,
-    Build, Rocket, State,
+    Build, Rocket, State, routes,
 };
 use serde::{Deserialize, Serialize};
 
-mod user;
+#[macro_use]
+pub mod user;
 pub use user::{AuthUser, Result as AResult, User};
 
 #[derive(Debug, Serialize, Deserialize)]

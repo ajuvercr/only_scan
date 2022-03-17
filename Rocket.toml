@@ -3,13 +3,17 @@ address = "0.0.0.0"
 port = 8000
 
 desk_server_ip = "192.168.0.69"
+fava_base = "http://localhost:5000/"
 beancount_location = "test.bean"
 
 [default]
 database_url = "postgres://onlyscan:password@localhost/diesel_demo"
-oauth_base = "http://localhost:8001" 
-client_id = "only-scan"
-client_secret= "Y5xSinM49kNIsw3Tcn02pTXYHO2YED9zRqJTJukzwMGp68lajc34kArNSHPzcWHq"
+oauth_base = "https://oauth.avercruysse.be"
+# client_id = "only-scan"
+# client_secret= "Y5xSinM49kNIsw3Tcn02pTXYHO2YED9zRqJTJukzwMGp68lajc34kArNSHPzcWHq"
+client_id = "only_scan_dev"
+client_secret = "eZfWuC9BmGHYFxfylJWCWDSQDwWRl0cLa5B01TATbCcIgz3OKXBIpROuuDgp2Yof"
+
 
 
 
