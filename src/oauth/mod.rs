@@ -1,8 +1,9 @@
 use rocket::{
     http::{Cookie, CookieJar},
     response::Redirect,
+    routes,
     serde::json::serde_json,
-    Build, Rocket, State, routes,
+    Build, Rocket, State,
 };
 use serde::{Deserialize, Serialize};
 
@@ -88,6 +89,13 @@ pub fn login(config: &State<util::Config>, host: HostHeader<'_>) -> Redirect {
     Redirect::to(url)
 }
 
+#[get("/logout")]
+fn logout(cookies: &CookieJar) -> Redirect {
+    cookies.remove(Cookie::named(user::COOKIE_NAME));
+    // cookies.remove(Cookie::named());
+    Redirect::to("/")
+}
+
 pub fn fuel(rocket: Rocket<Build>) -> Rocket<Build> {
-    rocket.mount("/oauth", routes![callback, login,])
+    rocket.mount("/oauth", routes![callback, login, logout,])
 }

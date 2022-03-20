@@ -16,13 +16,12 @@
         <li><a href="/scan">Scan Me</a></li>
         <li><a href="/scrum">SCRUM</a></li>
         <li><a href="/fava">Fava</a></li>
-        <li>
         {{#if logged_in}}
-            <div>{{name}}</div>
+        <li><a href="/oauth/logout">Logout</a></li>
+        <li><div>{{name}}</div></li>
         {{else}}
-            <div>Anonymouse</div>
+        <li><a href="/oauth/login">Login</a></li>
         {{/if}}
-        </li>
     </ul>
 
     {{#each errors}}
