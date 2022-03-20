@@ -3,6 +3,7 @@
 #![feature(const_fn_trait_bound)]
 #[macro_use]
 extern crate rocket;
+extern crate base64;
 extern crate chrono;
 #[macro_use]
 extern crate crud_helper;

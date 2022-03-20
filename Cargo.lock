@@ -1276,6 +1276,7 @@ name = "only_scan"
 version = "0.1.0"
 dependencies = [
  "assert_matches",
+ "base64",
  "byteorder 0.3.13",
  "chrono",
  "cool-id-generator",

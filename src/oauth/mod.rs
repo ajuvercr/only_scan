@@ -1,4 +1,7 @@
+use std::{collections::HashMap, sync::Arc};
+
 use rocket::{
+    futures::lock::Mutex,
     http::{Cookie, CookieJar},
     response::Redirect,
     routes,
@@ -10,6 +13,8 @@ use serde::{Deserialize, Serialize};
 #[macro_use]
 pub mod user;
 pub use user::{AuthUser, Result as AResult, User};
+
+type Routes = Arc<Mutex<HashMap<String, String>>>;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct TokenReq {
@@ -81,12 +86,15 @@ async fn callback<'r>(
     Some(format!("{:?}", resp))
 }
 
-#[get("/login")]
-pub fn login(config: &State<util::Config>, host: HostHeader<'_>) -> Redirect {
-    let url = format!("{}/oauth/authorize?response_type=code&client_id={}&redirect_uri={}/oauth/callback&state=123",
-                      config.oauth_base, config.client_id, host.get(), );
+#[get("/login?<from>")]
+pub fn login(from: &str, config: &State<util::Config>, host: HostHeader<'_>) -> Redirect {
+    let state = base64::decode_config(from, base64::URL_SAFE).and(String::from_utf8).unwrap_or("".to_string());
+
+    if let Ok(callback) = base64::decode_config(from, base64::URL_SAFE) {}
+    let url = format!("{}/oauth/authorize?response_type=code&client_id={}&redirect_uri={}/oauth/callback&state={}",
+                      config.oauth_base, config.client_id, host.get(),state );
     println!("login url: {}", url);
-    Redirect::to(url)
+    Redirect::to(url).into()
 }
 
 #[get("/logout")]

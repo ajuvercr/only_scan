@@ -86,7 +86,8 @@ impl<'r> FromRequest<'r> for AuthUser {
         } else {
             let host = req.guard().await.unwrap();
             let config = req.guard().await.unwrap();
-            Outcome::Success(Result::Err(super::login(config, host)))
+            let url = req.uri().to_string();
+            Outcome::Success(Result::Err(super::login(&url, config, host)))
         }
     }
 }
