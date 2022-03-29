@@ -6,3 +6,30 @@
     border: none;
     overflow-y: hidden;
 }
+
+.main {
+    margin-top: 40px;
+    display: flex;
+    justify-content: space-evenly;
+}
+
+.item {
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+
+   transition-duration: 200ms;
+   transition-property: transform;
+}
+
+.item i {
+    font-size: 4em;
+}
+
+.item:hover i {
+    color: orange;
+}
+
+.item:hover {
+    transform: scale(1.2);
+}
