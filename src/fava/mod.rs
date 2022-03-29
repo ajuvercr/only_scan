@@ -3,10 +3,11 @@ use rocket_dyn_templates::Template;
 
 use crate::{
     context::Context,
-    oauth::{AuthUser, User},
+    oauth::AuthUser,
 };
-use rocket::serde::json::serde_json::{self, json};
-use rocket::serde::{Deserialize, Serialize};
+use rocket::serde::Deserialize;
+
+mod ingest;
 
 #[derive(Deserialize, Debug)]
 struct FavaConfig {
@@ -18,19 +19,25 @@ fn fava_base() -> String {
     "https://avercruysse.be/fava/".to_string()
 }
 
-#[get("/")]
-async fn index(
+#[get("/beancount")]
+async fn beancount(
     mut context: Context,
     user: AuthUser,
     config: &State<FavaConfig>,
 ) -> Result<Template, Redirect> {
-    let user: User = unwrap!(user);
+    unwrap!(user);
     context.add("fava_base", config.fava_base.clone());
     Ok(Template::render("fava/fava", context.value()))
 }
 
+#[get("/")]
+async fn index(context: Context) -> Result<Template, Redirect> {
+    Ok(Template::render("fava/index", context.value()))
+}
+
 pub fn fuel(rocket: Rocket<Build>) -> Rocket<Build> {
+    let rocket = ingest::fuel(rocket);
     rocket
-        .mount("/fava", routes![index])
+        .mount("/fava", routes![index, beancount])
         .attach(AdHoc::config::<FavaConfig>())
 }

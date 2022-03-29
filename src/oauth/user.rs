@@ -18,6 +18,11 @@ pub enum Result<T, E> {
     Ok(T),
     Err(E),
 }
+impl<T, E> Result<T, E> {
+    pub fn r(self) -> std::result::Result<T, E> {
+        self.into()
+    }
+}
 
 impl<T, E, F: From<E>> FromResidual<Result<Infallible, E>> for Result<T, F> {
     fn from_residual(residual: Result<Infallible, E>) -> Self {
@@ -61,10 +66,16 @@ impl<T, E> From<std::result::Result<T, E>> for Result<T, E> {
 }
 
 macro_rules! unwrap {
+    ($l:expr, $e:expr) => {
+        match $l {
+            crate::oauth::AuthUser::Ok(user) => user,
+            crate::oauth::AuthUser::Err(e) => return $e.into(),
+        }
+    };
     ($l:expr) => {
         match $l {
             crate::oauth::AuthUser::Ok(user) => user,
-            crate::oauth::AuthUser::Err(e) => return Err(e),
+            crate::oauth::AuthUser::Err(e) => return Err(e).into(),
         }
     };
 }

@@ -1,24 +1,24 @@
-use rocket::fairing::AdHoc;
-use rocket::form::Form;
-use rocket::fs::TempFile;
-use rocket::response::Redirect;
+use rocket::{fairing::AdHoc, response::Redirect, routes, Build, Rocket, State};
+use rocket_dyn_templates::Template;
+
+use crate::{context::Context, oauth::AuthUser};
 use rocket::serde::json::serde_json::json;
 use rocket::serde::{Deserialize, Serialize};
-use rocket::State;
-use rocket::{Build, Rocket};
-use rocket_dyn_templates::Template;
+
+use rocket::form::Form;
+use rocket::fs::TempFile;
 use std::io::Write;
 
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 
-use regex::Regex;
-
 use crate::repository::Repository;
-mod vision;
 
-const TEMP_FILE_1: &'static str = "/tmp/file1.jpg";
-const TEMP_FILE_2: &'static str = "/tmp/file2.jpg";
+// #[get("/")]
+// async fn ingest(mut context: Context, user: AuthUser) -> Result<Template, Redirect> {
+//     let user: User = unwrap!(user);
+//     Ok(Template::render("fava/fava", context.value()))
+// }
 
 macro_rules! get_foo {
     (item mut $state:expr, $item_id:expr) => {
@@ -118,36 +118,6 @@ impl Scan {
         }
     }
 
-    pub fn from_vec(vec: Vec<Vec<String>>) -> Self {
-        let str: String = vec
-            .iter()
-            .flatten()
-            .cloned()
-            .collect::<String>()
-            .replace(" ", "");
-
-        let re = Regex::new(r"(\d{2}/\d{2}/\d{2})").unwrap();
-        let mut date: time::Date = re
-            .captures(&str)
-            .and_then(|caps| caps.get(0))
-            .and_then(|x| time::Date::parse(x.as_str(), "%d/%m/%y").ok())
-            .unwrap_or(time::Date::today());
-
-        if date.year() < 2000 {
-            date = time::Date::try_from_ymd(date.year() + 2000, date.month(), date.day()).unwrap();
-        }
-
-        let items = vec.into_iter().filter_map(ScanItem::try_from_vec).collect();
-
-        let out = Self {
-            id: uuid::Uuid::new_v4().to_string(),
-            date,
-            items,
-        };
-
-        out
-    }
-
     fn get_first<'a>(&'a self) -> Option<&'a ScanItem> {
         self.items.iter().filter(|x| x.needs_categorised()).next()
     }
@@ -187,41 +157,6 @@ impl ScanItem {
     fn needs_categorised(&self) -> bool {
         self.category.is_none()
     }
-
-    fn try_from_vec(mut vec: Vec<String>) -> Option<Self> {
-        if vec.len() < 2 {
-            return None;
-        }
-        vec.reverse();
-        let mut iter = vec.into_iter();
-
-        let mut price_str = String::new();
-        let price = loop {
-            price_str += &iter.next()?;
-
-            if !price_str.contains('.') && !price_str.contains(',') {
-                continue;
-            }
-
-            let price_try = price_str.replace(',', ".").parse::<f32>().ok();
-
-            if let Some(p) = price_try {
-                break (p * 100.0) as usize;
-            }
-        };
-
-        let name = iter.collect::<Vec<_>>().join(" ");
-        if name.contains("\n") {
-            return None;
-        }
-
-        Some(Self {
-            id: uuid::Uuid::new_v4().to_string(),
-            name,
-            price,
-            category: None,
-        })
-    }
 }
 
 #[derive(Deserialize, Debug)]
@@ -247,7 +182,8 @@ fn default_beancount_location() -> String {
 }
 
 #[get("/")]
-fn get(scans: &State<Scans>) -> Template {
+fn get(scans: &State<Scans>, user: AuthUser) -> Result<Template, Redirect> {
+    unwrap!(user);
     scans.with(|scans| {
         let scans: Vec<_> = scans
             .iter()
@@ -266,34 +202,24 @@ fn get(scans: &State<Scans>) -> Template {
             "scans": scans,
         });
 
-        Template::render("scan/index", &context)
+        Ok(Template::render("scan/index", &context))
     })
 }
 
 #[get("/new")]
-fn new_get() -> Template {
-    let context = json!({
-        "errors": []
-    });
-
-    Template::render("scan/new", &context)
+fn new_get(user: AuthUser, context: Context) -> Result<Template, Redirect> {
+    unwrap!(user);
+    Ok(Template::render("scan/new", context.value()))
 }
 
 #[post("/new", data = "<file>")]
-async fn new_post(mut file: TempFile<'_>, scans: &State<Scans>) -> Option<Redirect> {
-    file.persist_to(TEMP_FILE_1).await.ok()?;
-    vision::turn_image(TEMP_FILE_1, TEMP_FILE_2)?;
-
-    let file = vision::ocr(TEMP_FILE_2)?;
-    let part = file.responses.into_iter().next()?;
-    let lines = part.lines();
-
-    let scan = Scan::from_vec(lines);
-    let id = scan.id.clone();
-
-    scans.with_save(|scans| scans.push(scan));
-
-    Redirect::to(uri!("/scan", get_scan(id))).into()
+async fn new_post(
+    file: TempFile<'_>,
+    scans: &State<Scans>,
+    user: AuthUser,
+) -> Result<Option<Redirect>, Redirect> {
+    unwrap!(user);
+    todo!()
 }
 
 #[get("/<uuid>")]
@@ -301,7 +227,11 @@ fn get_scan(
     uuid: &str,
     scans: &State<Scans>,
     beans: &State<Repository<Beans>>,
+    mut context: Context,
+    user: AuthUser,
 ) -> Option<Result<Template, Redirect>> {
+    unwrap!(user);
+
     scans.with(|state| {
         let scan = get_foo!(scan state, uuid);
 
@@ -328,7 +258,7 @@ fn get_scan(
                         })
                     })
                     .collect();
-                let context = json!({
+                let items = json!({
                     "errors": [],
                     "pay_options": pay_options,
                     "categories": categories,
@@ -336,8 +266,9 @@ fn get_scan(
                     "items": items,
                     "date": scan.date.format("%Y-%m-%d"),
                 });
+                context.merge(items);
 
-                Ok(Template::render("scan/one", &context)).into()
+                Ok(Template::render("scan/one", context.value())).into()
             })
         }
     })
@@ -435,7 +366,12 @@ fn post_scan(
     scans: &State<Scans>,
     beans: &State<Repository<Beans>>,
     config: &State<ScanConfigConfig>,
+    user: AuthUser,
 ) -> Option<Redirect> {
+    if let Err(e) = user.r() {
+        return Some(e);
+    }
+
     println!("{:?}", user_input);
 
     let location = &config.beancount_location;
@@ -484,7 +420,10 @@ fn get_one(
     item_id: &str,
     scans: &State<Scans>,
     beans: &State<Repository<Beans>>,
-) -> Option<Template> {
+    mut context: Context,
+    user: AuthUser,
+) -> Option<Result<Template, Redirect>> {
+    unwrap!(user);
     scans.with(|state| {
         let scan = get_foo!(scan state, scan_id);
         let item = get_foo!(item scan, item_id);
@@ -494,7 +433,7 @@ fn get_one(
 
             // let categories: Vec<_> = beans.categories.iter().map(|(_, x)| x).collect();
 
-            let context = json!({
+            let items = json!({
                 "errors": [],
                 "item": {
                     "name": item.name,
@@ -503,8 +442,9 @@ fn get_one(
                 "categories_left": left,
                 "categories_right": right,
             });
+            context.merge(items);
 
-            Template::render("scan/item", &context).into()
+            Ok(Template::render("scan/item", context.value())).into()
         })
     })
 }
@@ -516,7 +456,12 @@ fn post_one(
     user_input: Form<CategoriseForm<'_>>,
     scans: &State<Scans>,
     beans: &State<Repository<Beans>>,
+    user: AuthUser,
 ) -> Redirect {
+    if let Err(e) = user.r() {
+        return e;
+    }
+
     beans.with_save(|beans| {
         beans.inc_category(user_input.category);
     });
@@ -536,7 +481,11 @@ fn post_one(
 }
 
 #[delete("/<scan_id>/<item_id>")]
-fn delete_one(scan_id: &str, item_id: &str, scans: &State<Scans>) -> Redirect {
+fn delete_one(scan_id: &str, item_id: &str, scans: &State<Scans>, user: AuthUser) -> Redirect {
+    if let Err(e) = user.r() {
+        return e;
+    }
+
     println!("Deleting");
     scans.with_save(|scans| {
         if let Some(scan) = scans.iter_mut().filter(|x| x.id == scan_id).next() {
@@ -550,7 +499,7 @@ fn delete_one(scan_id: &str, item_id: &str, scans: &State<Scans>) -> Redirect {
 pub fn fuel(rocket: Rocket<Build>) -> Rocket<Build> {
     rocket
         .mount(
-            "/scan",
+            "/fava/ingest",
             routes![get, new_get, new_post, get_scan, post_scan, get_one, post_one, delete_one],
         )
         .attach(AdHoc::config::<ScanConfigConfig>())

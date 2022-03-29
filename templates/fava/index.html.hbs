@@ -1,0 +1,38 @@
+{{#*inline "headers"}}
+<title>Fava | Only_Scan</title>
+<link rel="stylesheet" href="/static/fava.css">
+<script src="https://kit.fontawesome.com/bea710e1ab.js" crossorigin="anonymous"></script>
+{{/inline}}
+
+
+{{#*inline "page"}}
+
+<div class="main">
+    <div class="item">
+        <i class="fa-solid fa-rocket"></i>
+        <div>
+            <p>Ingest your banking data here!</p>
+            <p>Upload some csv and hope someone configured the correct settings!</p>
+        </div>
+        <button onclick="window.location.href='/fava/ingest'">Ingest</button>
+    </div>
+
+    <div class="item">
+        <i class="fa-solid fa-rocket"></i>
+        <div>
+            <p>Manually alter your beancount file.</p>
+            <p>You filthy human.</p>
+        </div>
+        <button onclick="window.location.href='/fava/beancount'">Beancount</button>
+    </div>
+
+    <div class="item">
+        <i class="fa-solid fa-rocket"></i>
+        <p>See some cool graphs of your spending habits</p>
+        <button onclick="window.location.href='/fava/graphs'">Graphs</button>
+    </div>
+
+</div>
+{{/inline}}
+
+{{> base}}

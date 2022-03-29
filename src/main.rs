@@ -110,7 +110,6 @@ fn rocket() -> _ {
         .attach(AdHoc::config::<util::Config>())
         .manage(init_pool(&config));
     let rocket = pages::desk::fuel(rocket);
-    let rocket = pages::scan::fuel(rocket);
     let rocket = pages::scrum::fuel(rocket);
     let rocket = oauth::fuel(rocket);
     let rocket = fava::fuel(rocket);

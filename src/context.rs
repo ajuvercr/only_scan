@@ -3,7 +3,7 @@ use std::convert::Infallible;
 use crate::oauth::{AResult, AuthUser};
 use rocket::request::{FromRequest, Outcome, Request};
 use rocket::serde::json::serde_json::Map;
-use rocket::serde::json::{self, Value, json};
+use rocket::serde::json::{Value, json};
 
 pub struct Context {
     inner: Map<String, Value>,

@@ -1,7 +1,5 @@
-use std::{collections::HashMap, sync::Arc};
 
 use rocket::{
-    futures::lock::Mutex,
     http::{Cookie, CookieJar},
     response::{content::Html, Redirect},
     routes,
