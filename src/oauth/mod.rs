@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use rocket::{
     futures::lock::Mutex,
     http::{Cookie, CookieJar},
-    response::Redirect,
+    response::{content::Html, Redirect},
     routes,
     serde::json::serde_json,
     Build, Rocket, State,
@@ -13,8 +13,6 @@ use serde::{Deserialize, Serialize};
 #[macro_use]
 pub mod user;
 pub use user::{AuthUser, Result as AResult, User};
-
-type Routes = Arc<Mutex<HashMap<String, String>>>;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct TokenReq {
@@ -64,7 +62,7 @@ async fn callback<'r>(
     jar: &CookieJar<'_>,
     config: &State<util::Config>,
     host: HostHeader<'r>,
-) -> Option<String> {
+) -> Option<Html<String>> {
     println!("callback: hostheader {:?}", host);
 
     let resp = token_req(
@@ -83,14 +81,23 @@ async fn callback<'r>(
         serde_json::to_string(&resp.info).ok()?,
     ));
 
-    Some(format!("{:?}", resp))
+    let url = data
+        .state
+        .as_ref()
+        .and_then(|state| {
+            base64::decode_config(state, base64::URL_SAFE)
+                .ok()
+                .and_then(|x| String::from_utf8(x).ok())
+        })
+        .unwrap_or("".to_string());
+
+    let content = format!("<html><p>redirecting to <a href={:?}>{}</a></p><script>window.onload = () => (setTimeout(() => window.location.href = {:?}, 500))</script></html>", url, url, url);
+    Some(Html(content))
 }
 
 #[get("/login?<from>")]
 pub fn login(from: &str, config: &State<util::Config>, host: HostHeader<'_>) -> Redirect {
-    let state = base64::decode_config(from, base64::URL_SAFE).and(String::from_utf8).unwrap_or("".to_string());
-
-    if let Ok(callback) = base64::decode_config(from, base64::URL_SAFE) {}
+    let state = base64::encode_config(from, base64::URL_SAFE);
     let url = format!("{}/oauth/authorize?response_type=code&client_id={}&redirect_uri={}/oauth/callback&state={}",
                       config.oauth_base, config.client_id, host.get(),state );
     println!("login url: {}", url);
