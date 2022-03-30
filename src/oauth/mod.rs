@@ -74,7 +74,7 @@ async fn callback<'r>(
     .await
     .ok()?;
 
-    jar.add_private(Cookie::new(
+    jar.add(Cookie::new(
         user::COOKIE_NAME,
         serde_json::to_string(&resp.info).ok()?,
     ));

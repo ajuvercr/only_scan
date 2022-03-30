@@ -7,6 +7,7 @@ use crate::{
 };
 use rocket::serde::Deserialize;
 
+mod models;
 mod ingest;
 
 #[derive(Deserialize, Debug)]

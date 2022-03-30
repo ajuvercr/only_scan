@@ -1,3 +1,4 @@
+use rocket::Data;
 use rocket::{fairing::AdHoc, response::Redirect, routes, Build, Rocket, State};
 use rocket_dyn_templates::Template;
 
@@ -6,13 +7,13 @@ use rocket::serde::json::serde_json::json;
 use rocket::serde::{Deserialize, Serialize};
 
 use rocket::form::Form;
+use rocket::data::ToByteUnit;
 use rocket::fs::TempFile;
-use std::io::Write;
-
-use rand::distributions::Alphanumeric;
-use rand::{thread_rng, Rng};
+use std::io::{Cursor, Write};
 
 use crate::repository::Repository;
+
+use super::models::*;
 
 // #[get("/")]
 // async fn ingest(mut context: Context, user: AuthUser) -> Result<Template, Redirect> {
@@ -82,83 +83,6 @@ struct CategoriseForm<'r> {
     price: f32,
 }
 
-type Scans = Repository<Vec<Scan>>;
-#[derive(Deserialize, Serialize, Debug, Clone)]
-struct Scan {
-    id: String,
-    date: time::Date,
-    items: Vec<ScanItem>,
-}
-
-#[allow(deprecated)]
-impl Scan {
-    fn delete(&mut self, id: &str) {
-        self.items.retain(|x| x.id != id);
-    }
-
-    fn new_with(count: usize) -> Self {
-        let mut rng = thread_rng();
-        let items = (0..count)
-            .map(|_| {
-                ScanItem::new::<String>(
-                    // String:
-                    (&mut rng)
-                        .sample_iter(Alphanumeric)
-                        .take(7)
-                        .map(char::from)
-                        .collect(),
-                    rng.gen_range(50..1000),
-                )
-            })
-            .collect();
-        Self {
-            id: uuid::Uuid::new_v4().to_string(),
-            date: time::Date::today(),
-            items,
-        }
-    }
-
-    fn get_first<'a>(&'a self) -> Option<&'a ScanItem> {
-        self.items.iter().filter(|x| x.needs_categorised()).next()
-    }
-
-    fn count_done(&self) -> (usize, usize) {
-        let done = self.items.iter().filter(|x| !x.needs_categorised()).count();
-        (done, self.items.len())
-    }
-
-    fn categorise(&mut self, uuid: &str, name: &str, price: usize, category: &str) {
-        if let Some(item) = self.items.iter_mut().filter(|x| x.id == uuid).next() {
-            item.category = Some(category.to_string());
-            item.name = name.to_string();
-            item.price = price;
-        }
-    }
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-struct ScanItem {
-    id: String,
-    name: String,
-    price: usize,
-    category: Option<String>,
-}
-
-impl ScanItem {
-    fn new<S: Into<String>>(name: S, price: usize) -> Self {
-        Self {
-            id: uuid::Uuid::new_v4().to_string(),
-            name: name.into(),
-            price,
-            category: None,
-        }
-    }
-
-    fn needs_categorised(&self) -> bool {
-        self.category.is_none()
-    }
-}
-
 #[derive(Deserialize, Debug)]
 struct ScanConfigConfig {
     #[serde(default = "default_location")]
@@ -209,17 +133,44 @@ fn get(scans: &State<Scans>, user: AuthUser) -> Result<Template, Redirect> {
 #[get("/new")]
 fn new_get(user: AuthUser, context: Context) -> Result<Template, Redirect> {
     unwrap!(user);
-    Ok(Template::render("scan/new", context.value()))
+    Ok(Template::render("fava/new", context.value()))
 }
 
-#[post("/new", data = "<file>")]
+#[post("/new", data = "<data>")]
 async fn new_post(
-    file: TempFile<'_>,
+    data: Data<'_>,
     scans: &State<Scans>,
     user: AuthUser,
 ) -> Result<Option<Redirect>, Redirect> {
     unwrap!(user);
-    todo!()
+
+    let string = data
+        .open(512u32.megabytes())
+        .into_string()
+        .await
+        .map_err(|e| {
+            println!("{:?}", e);
+            Redirect::to("/fava")
+        })?
+        .into_inner();
+    let mut cursor = Cursor::new(string.replace(",", "."));
+
+    let mut rdr = csv::ReaderBuilder::new()
+        .delimiter(b';')
+        .from_reader(&mut cursor);
+
+    for result in rdr.deserialize() {
+        // An error may occur, so abort the program in an unfriendly way.
+        // We will make this more friendly later!
+        let record: Statement = result.map_err(|e| {
+            println!("{:?}", e);
+            Redirect::to("/fava")
+        })?;
+        // Print a debug version of the record.
+        println!("{:?}", record);
+    }
+
+    Ok(Some(Redirect::to("/fava")))
 }
 
 #[get("/<uuid>")]

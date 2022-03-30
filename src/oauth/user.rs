@@ -90,7 +90,7 @@ impl<'r> FromRequest<'r> for AuthUser {
     async fn from_request(req: &'r Request<'_>) -> Outcome<Self, Self::Error> {
         if let Some(c) = req
             .cookies()
-            .get_private(COOKIE_NAME)
+            .get(COOKIE_NAME)
             .and_then(|cookie| rocket::serde::json::from_str::<User>(cookie.value()).ok())
         {
             Outcome::Success(Result::Ok(c))
