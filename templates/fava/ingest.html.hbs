@@ -1,0 +1,51 @@
+{{#*inline "headers"}}
+<title>New | Scan | Only_Scan</title>
+<link rel="stylesheet" href="/static/scan.css">
+{{/inline}}
+
+{{#*inline "page"}}
+
+<ul>
+    {{#each scans}}
+    <li>
+        <a href="/fava/ingest/{{this.id}}">
+            Scan {{this.id}} ({{this.done}} / {{this.total}})
+        </a>
+    </li>
+    {{/each}}
+</ul>
+
+<input type=file id="fileinput" />
+<button id="confirm" disabled=true onclick="upload()">Upload!</button>
+
+<script>
+    const input = document.getElementById("fileinput");
+    const confirm = document.getElementById("confirm");
+
+    async function upload() {
+        const resp = await fetch('/fava/ingest/new', { // Your POST endpoint
+            method: 'POST',
+            headers: {
+                // Content-Type may need to be completely **omitted**
+                // or you may need something
+                "Content-Type": "You will perhaps need to define a content-type here"
+            },
+            body: input.files[0]// This is your file object
+        });
+
+        const txt = await resp.text();
+        console.log(txt);
+
+        window.location.reload();
+    }
+
+
+    // Add a listener on your input
+    // It will be triggered when a file will be selected
+    input.addEventListener('change', () => confirm.disabled = false, false);
+</script>
+
+
+{{/inline}}
+
+{{> base}}

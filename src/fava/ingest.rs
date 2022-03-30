@@ -6,8 +6,8 @@ use crate::{context::Context, oauth::AuthUser};
 use rocket::serde::json::serde_json::json;
 use rocket::serde::{Deserialize, Serialize};
 
-use rocket::form::Form;
 use rocket::data::ToByteUnit;
+use rocket::form::Form;
 use rocket::fs::TempFile;
 use std::io::{Cursor, Write};
 
@@ -113,7 +113,6 @@ fn get(scans: &State<Scans>, user: AuthUser) -> Result<Template, Redirect> {
             .iter()
             .map(|scan| {
                 json!({
-                    "date": scan.date.format("%d/%m/%y").to_string(),
                     "done": scan.count_done().0,
                     "total": scan.count_done().1,
                     "id": scan.id,
@@ -126,14 +125,8 @@ fn get(scans: &State<Scans>, user: AuthUser) -> Result<Template, Redirect> {
             "scans": scans,
         });
 
-        Ok(Template::render("scan/index", &context))
+        Ok(Template::render("fava/ingest", &context))
     })
-}
-
-#[get("/new")]
-fn new_get(user: AuthUser, context: Context) -> Result<Template, Redirect> {
-    unwrap!(user);
-    Ok(Template::render("fava/new", context.value()))
 }
 
 #[post("/new", data = "<data>")]
@@ -159,6 +152,7 @@ async fn new_post(
         .delimiter(b';')
         .from_reader(&mut cursor);
 
+    let mut items = Vec::new();
     for result in rdr.deserialize() {
         // An error may occur, so abort the program in an unfriendly way.
         // We will make this more friendly later!
@@ -168,7 +162,11 @@ async fn new_post(
         })?;
         // Print a debug version of the record.
         println!("{:?}", record);
+        items.push(record);
     }
+    let scan = Scan::new(items);
+
+    scans.with_save(|r| r.push(scan));
 
     Ok(Some(Redirect::to("/fava")))
 }
@@ -188,38 +186,39 @@ fn get_scan(
 
         if let Some(item) = scan.get_first() {
             Err(Redirect::to(uri!(
-                "/scan",
-                get_one(uuid, item.id.to_string())
+                "/fava/ingest",
+                get_one(uuid, item.id.0.to_string())
             )))
             .into()
         } else {
             beans.with(|beans| {
-                let pay_options: Vec<_> = beans.pay_options.iter().map(|(_, x)| x).collect();
-                let categories: Vec<_> = beans.categories.iter().map(|(_, x)| x).collect();
-                let total: usize = scan.items.iter().map(|item| item.price).sum();
+                todo!()
+                // let pay_options: Vec<_> = beans.pay_options.iter().map(|(_, x)| x).collect();
+                // let categories: Vec<_> = beans.categories.iter().map(|(_, x)| x).collect();
+                // let total: usize = scan.items.iter().map(|item| item.price).sum();
 
-                let items: Vec<_> = scan
-                    .items
-                    .iter()
-                    .map(|item| {
-                        json!({
-                            "name": item.name,
-                            "price": item.price,
-                            "category": item.category,
-                        })
-                    })
-                    .collect();
-                let items = json!({
-                    "errors": [],
-                    "pay_options": pay_options,
-                    "categories": categories,
-                    "total": total,
-                    "items": items,
-                    "date": scan.date.format("%Y-%m-%d"),
-                });
-                context.merge(items);
+                // let items: Vec<_> = scan
+                //     .items
+                //     .iter()
+                //     .map(|item| {
+                //         json!({
+                //             "name": item.name,
+                //             "price": item.price,
+                //             "category": item.category,
+                //         })
+                //     })
+                //     .collect();
+                // let items = json!({
+                //     "errors": [],
+                //     "pay_options": pay_options,
+                //     "categories": categories,
+                //     "total": total,
+                //     "items": items,
+                //     "date": scan.date.format("%Y-%m-%d"),
+                // });
+                // context.merge(items);
 
-                Ok(Template::render("scan/one", context.value())).into()
+                // Ok(Template::render("scan/one", context.value())).into()
             })
         }
     })
@@ -336,32 +335,32 @@ fn post_scan(
 
     scans.with_save(|scans| {
         let scan_index = scans.iter().position(|x| x.id == scan_id)?;
-        let scan = scans.get_mut(scan_index)?;
+        // let scan = scans.get_mut(scan_index)?;
 
-        let output = ScanOutput::new(
-            &scan.items,
-            user_input.date,
-            user_input.name,
-            user_input.rest,
-            &payments,
-        );
+        // let output = ScanOutput::new(
+        //     &scan.items,
+        //     user_input.date,
+        //     user_input.name,
+        //     user_input.rest,
+        //     &payments,
+        // );
 
-        let mut file = fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(location)
-            .ok()?;
+        // let mut file = fs::OpenOptions::new()
+        //     .create(true)
+        //     .append(true)
+        //     .open(location)
+        //     .ok()?;
 
-        writeln!(file, "\n{}", output).ok()?;
+        // writeln!(file, "\n{}", output).ok()?;
 
-        beans.with_save(|beans| {
-            for pay in user_input.pay.iter() {
-                beans.inc_pay(pay);
-            }
-        });
+        // beans.with_save(|beans| {
+        //     for pay in user_input.pay.iter() {
+        //         beans.inc_pay(pay);
+        //     }
+        // });
 
         scans.remove(scan_index);
-        Redirect::to("/scan").into()
+        Redirect::to("/fava/ingest").into()
     })
 }
 
@@ -377,7 +376,7 @@ fn get_one(
     unwrap!(user);
     scans.with(|state| {
         let scan = get_foo!(scan state, scan_id);
-        let item = get_foo!(item scan, item_id);
+        let item = get_foo!(item scan, ID(item_id.to_string()));
 
         beans.with(|beans| {
             let (left, right) = beans.categories.split_at(9);
@@ -386,10 +385,7 @@ fn get_one(
 
             let items = json!({
                 "errors": [],
-                "item": {
-                    "name": item.name,
-                    "price": item.price,
-                },
+                "item": item,
                 "categories_left": left,
                 "categories_right": right,
             });
@@ -419,15 +415,10 @@ fn post_one(
 
     scans.with_save(|scans| {
         if let Some(scan) = scans.iter_mut().filter(|x| x.id == scan_id).next() {
-            scan.categorise(
-                item_id,
-                user_input.name,
-                (user_input.price * 100.0) as usize,
-                user_input.category,
-            );
+            scan.categorise(item_id, user_input.category);
         }
 
-        Redirect::to(format!("/scan/{}", scan_id))
+        Redirect::to(format!("/fava/ingest/{}", scan_id))
     })
 }
 
@@ -444,20 +435,20 @@ fn delete_one(scan_id: &str, item_id: &str, scans: &State<Scans>, user: AuthUser
         }
     });
 
-    Redirect::to(format!("/scan/{}", scan_id))
+    Redirect::to(format!("/fava/ingest/{}", scan_id))
 }
 
 pub fn fuel(rocket: Rocket<Build>) -> Rocket<Build> {
     rocket
         .mount(
             "/fava/ingest",
-            routes![get, new_get, new_post, get_scan, post_scan, get_one, post_one, delete_one],
+            routes![get, new_post, get_scan, post_scan, get_one, post_one, delete_one],
         )
         .attach(AdHoc::config::<ScanConfigConfig>())
         .attach(Repository::<Vec<Scan>>::adhoc(
             "scans config",
             |c: &ScanConfigConfig| c.scan_config_location.to_string(),
-            vec![Scan::new_with(2), Scan::new_with(5)],
+            vec![],
         ))
         .attach(Repository::<Beans>::adhoc(
             "beans config",

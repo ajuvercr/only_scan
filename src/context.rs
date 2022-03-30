@@ -39,7 +39,11 @@ impl<'r> FromRequest<'r> for Context {
 
 fn merge(target: &mut Map<String, Value>, from: Map<String, Value>) {
     for (k, v) in from {
-        if target.contains_key(&k) && v.is_object() {
+        if !target.contains_key(&k) {
+            target.insert(k, v);
+            return;
+        }
+        if v.is_object() {
             assert!(target[&k].is_object());
             merge(target[&k].as_object_mut().unwrap(), to_map(v));
         } else {

@@ -2,16 +2,12 @@ use std::str::FromStr;
 
 use crate::repository::Repository;
 use chrono::NaiveDate;
-use diesel::dsl::Desc;
 use regex::Regex;
 use rocket::serde::{Deserialize, Serialize};
 
-use rand::distributions::Alphanumeric;
-use rand::{thread_rng, Rng};
-
 mod my_date;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct Note {
     #[serde(rename = "gestructureerde mededeling")]
     #[serde(deserialize_with = "my_date::deserialize_spacy_string")]
@@ -20,21 +16,7 @@ struct Note {
     #[serde(deserialize_with = "my_date::deserialize_spacy_string")]
     free: Option<String>,
 }
-
-#[derive(Serialize, Debug)]
-pub struct Dom {
-    way: String,
-    label: String,
-}
-
-#[derive(Serialize, Debug)]
-pub struct Bet {
-    way: String,
-    label: String,
-    user: String,
-}
-
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Clone)]
 pub struct Description {
     way: String,
     label: String,
@@ -55,7 +37,10 @@ impl FromStr for Description {
         let label;
         let mut user = None;
         // Dom
-        if splits[0].contains("DOMICILIERING") || splits[0].contains("DOORLOPENDE") || splits[0].starts_with("OVERSCHRIJVING") {
+        if splits[0].contains("DOMICILIERING")
+            || splits[0].contains("DOORLOPENDE")
+            || splits[0].starts_with("OVERSCHRIJVING")
+        {
             label = s
                 .split(':')
                 .nth(1)
@@ -78,8 +63,20 @@ impl FromStr for Description {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ID(pub String);
+impl Default for ID {
+    fn default() -> Self {
+        ID(uuid::Uuid::new_v4().to_string())
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Statement {
+    #[serde(default)]
+    pub id: ID,
+    #[serde(default)]
+    category: Option<String>,
     #[serde(rename = "Omschrijving")]
     #[serde(deserialize_with = "my_date::deserialize_betaling")]
     description: Result<Description, &'static str>,
@@ -95,43 +92,31 @@ pub struct Statement {
     node: Note,
 }
 
+impl Statement {
+    pub fn needs_categorised(&self) -> bool {
+        self.category.is_none()
+    }
+}
+
 pub type Scans = Repository<Vec<Scan>>;
+
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Scan {
     pub id: String,
-    pub date: time::Date,
-    pub items: Vec<ScanItem>,
+    pub items: Vec<Statement>,
 }
 
 #[allow(deprecated)]
 impl Scan {
+    pub fn new(items: Vec<Statement>) -> Self {
+        let id = uuid::Uuid::new_v4().to_string();
+        Self { id, items }
+    }
     pub fn delete(&mut self, id: &str) {
-        self.items.retain(|x| x.id != id);
+        self.items.retain(|x| x.id.0 != id);
     }
 
-    pub fn new_with(count: usize) -> Self {
-        let mut rng = thread_rng();
-        let items = (0..count)
-            .map(|_| {
-                ScanItem::new::<String>(
-                    // String:
-                    (&mut rng)
-                        .sample_iter(Alphanumeric)
-                        .take(7)
-                        .map(char::from)
-                        .collect(),
-                    rng.gen_range(50..1000),
-                )
-            })
-            .collect();
-        Self {
-            id: uuid::Uuid::new_v4().to_string(),
-            date: time::Date::today(),
-            items,
-        }
-    }
-
-    pub fn get_first<'a>(&'a self) -> Option<&'a ScanItem> {
+    pub fn get_first<'a>(&'a self) -> Option<&'a Statement> {
         self.items.iter().filter(|x| x.needs_categorised()).next()
     }
 
@@ -140,11 +125,9 @@ impl Scan {
         (done, self.items.len())
     }
 
-    pub fn categorise(&mut self, uuid: &str, name: &str, price: usize, category: &str) {
-        if let Some(item) = self.items.iter_mut().filter(|x| x.id == uuid).next() {
+    pub fn categorise(&mut self, uuid: &str, category: &str) {
+        if let Some(item) = self.items.iter_mut().filter(|x| x.id.0 == uuid).next() {
             item.category = Some(category.to_string());
-            item.name = name.to_string();
-            item.price = price;
         }
     }
 }
