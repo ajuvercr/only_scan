@@ -5,31 +5,39 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/dist/main.css">
+
     {{> headers}}
 </head>
 
 <body>
-    <ul id=title class="nav">
-        <li><a href="/">Home</a></li>
-        <li><a href="/desk">Desk</a></li>
-        <li><a href="/scan">Scan Me</a></li>
-        <li><a href="/scrum">SCRUM</a></li>
-        <li><a href="/fava">Fava</a></li>
-        {{#if logged_in}}
-        <li><a href="/oauth/logout">Logout</a></li>
-        <li><div>{{name}}</div></li>
-        {{else}}
-        <li><a href="/oauth/login">Login</a></li>
-        {{/if}}
-    </ul>
-
-    {{#each errors}}
-    <div class="error">
-        <h3>{{this.header}}</h3>
-        <p>{{this.body}}</p>
-    </div>
-    {{/each}}
+    <nav class="navbar" role="navigation" aria-label="main navigation">
+        <div class="navbar-brand">
+            <a class="navbar-item" href="/">Home</a>
+            <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false"
+                data-target="navbarBasicExample">
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+            </a>
+        </div>
+        <div class="navbar-menu">
+            <div class="navbar-start">
+                <a class="navbar-item" href="/desk">Desk</a>
+                <a class="navbar-item" href="/scan">Scan</a>
+                <a class="navbar-item" href="/scrum">SCRUm</a>
+                <a class="navbar-item" href="/fava">Fava</a>
+            </div>
+            <div class="navbar-end">
+                {{#if logged_in}}
+                <div class="navbar-item has-text-primary">{{name}}</div>
+                <a class="navbar-item" href="/oauth/logout">Logout</a>
+                {{else}}
+                <a class="navbar-item" href="/oauth/login">Login</a>
+                {{/if}}
+            </div>
+        </div>
+    </nav>
 
     {{> page}}
 </body>

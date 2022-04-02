@@ -5,39 +5,42 @@
 
 {{#*inline "page"}}
 
-<div class="tiles">
-    <a class="tile" href="/desk">
-        <p class="content">
-            Desk
-        </p>
-    </a>
-    <a class="tile" href="/scan">
-        <p class="content">
-            Scan Me
-        </p>
-    </a>
-    <a class="tile" href="/scrum">
-        <p class="content">
-            SCRUM
-        </p>
-    </a>
-    <a class="tile" href="/">
-        <p class="content" >
-            Somewhere else
-        </p>
-    </a>
-    <div class="tile">
-        <a class="content" href="/">
-            Somewhere else
-        </a>
-    </div>
-    <div class="tile">
-        <a class="content" href="/">
-            Somewhere else
-        </a>
+<div class="container">
+    <div class="columns is-variable is-multiline is-mobile is-centered">
+        <div class="column is-one-quarter">
+            <a href="/desk">
+                <div class="notification is-success has-text-centered">Desk</div>
+            </a>
+        </div>
+        <div class="column is-one-quarter">
+            <a href="/scan">
+                <div class="notification is-success has-text-centered">Scan</div>
+            </a>
+        </div>
+        <div class="column is-one-quarter">
+            <a href="/scrum">
+                <div class="notification is-success has-text-centered">SCRUM</div>
+            </a>
+        </div>
+        <div class="column is-one-quarter">
+            <a href="/fava">
+                <div class="notification is-success has-text-centered">Fava</div>
+            </a>
+        </div>
+        <div class="column is-one-quarter">
+            <div class="notification is-success has-text-centered">Somewhere else</div>
+        </div>
+        <div class="column is-one-quarter">
+            <div class="notification is-success has-text-centered">Somewhere else </div>
+        </div>
+        <div class="column is-one-quarter">
+            <div class="notification is-success has-text-centered">Somewhere else</div>
+        </div>
+        <div class="column is-one-quarter">
+            <div class="notification is-success has-text-centered">Somewhere else</div>
+        </div>
     </div>
 </div>
-
 {{/inline}}
 
 {{> base}}
