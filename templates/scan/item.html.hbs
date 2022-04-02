@@ -6,7 +6,7 @@
 
 <form id="form" class="form container" action="#" method="POST">
     <input id="category" name="category" class="hidden" hidden>
-    <div class="card block">
+    <div class="card block is-lowercase">
         <div class="card-header has-text-centered">
             Date: {{item.date}}
         </div>
@@ -32,8 +32,8 @@
 
     <div class="columns block is-variable is-multiline is-centered">
         {{#each categories_left}}
-        <div class="column is-one-quarter" onclick='submit("{{this.1}}")'>
-            <div class="notification has-text-centered">{{shorten_cat this.1}}</div>
+        <div class="column is-one-quarter has-text-weight-bold is-family-monospace" onclick='submit("{{this.1}}")'>
+            <div class="notification has-text-centered" style="background-color: {{color_cat this.1}}">{{shorten_cat this.1}}</div>
         </div>
         {{/each}}
     </div>

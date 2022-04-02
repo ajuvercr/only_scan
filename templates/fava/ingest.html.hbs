@@ -23,22 +23,18 @@
     const confirm = document.getElementById("confirm");
 
     async function upload() {
+        confirm.classlist.add("is-loading")
         const resp = await fetch('/fava/ingest/new', { // Your POST endpoint
             method: 'POST',
             headers: {
-                // Content-Type may need to be completely **omitted**
-                // or you may need something
                 "Content-Type": "You will perhaps need to define a content-type here"
             },
             body: input.files[0]// This is your file object
         });
 
         const txt = await resp.text();
-        console.log(txt);
-
         window.location.reload();
     }
-
 
     // Add a listener on your input
     // It will be triggered when a file will be selected

@@ -3,6 +3,8 @@
 #![feature(const_fn_trait_bound)]
 #[macro_use]
 extern crate rocket;
+#[macro_use]
+extern crate lazy_static;
 extern crate base64;
 extern crate chrono;
 #[macro_use]
@@ -32,13 +34,15 @@ pub mod util;
 #[cfg(test)]
 mod tests;
 
+use std::collections::HashMap;
+
 use context::Context;
 use r2d2_diesel::ConnectionManager;
 use rocket::{
     fairing::AdHoc,
     http::Status,
     request::{self, FromRequest, Outcome},
-    Request, Route, State, routes,
+    routes, Request, Route, State,
 };
 use rocket_dyn_templates::{handlebars::handlebars_helper, Template};
 
@@ -50,9 +54,27 @@ async fn index(context: Context) -> Template {
     Template::render("index", context.value())
 }
 
+lazy_static! {
+    static ref EXAMPLE: HashMap<&'static str, &'static str> = HashMap::from([
+        ("Eten", "#f1d3a1"),
+        ("Nut", "#e3dbd9"),
+        ("Wonen", "#e6eff6"),
+        ("Transport", "#89b4c4"),
+        ("Uitgaven", "#548999"),
+        ("Afhaal", "#C38AF2"),
+    ]);
+}
+
 handlebars_helper!(shorten_cat: |x: str|
     x.rfind(':').and_then(|rfind| x.get(rfind + 1..)).unwrap_or(x)
 );
+handlebars_helper!(color_cat: |x: str| {
+    let mut parts = x.split(':');
+    let try_one = parts.next_back().and_then(|x| EXAMPLE.get(x));
+    let llast = parts.next_back().and_then(|x| EXAMPLE.get(x));
+    try_one.or(llast).map(|&x| x).unwrap_or("#BBF2D0")
+});
+
 handlebars_helper!(into_euro: |x: u64| format!("{:.2}", x as f64 / 100.0));
 handlebars_helper!(eq: |x: str, y: str| x == y);
 handlebars_helper!(lower: |x: str| x.to_lowercase());
@@ -119,6 +141,7 @@ fn rocket() -> _ {
         let handles = &mut engines.handlebars;
         handles.register_helper("eq", Box::new(eq));
         handles.register_helper("shorten_cat", Box::new(shorten_cat));
+        handles.register_helper("color_cat", Box::new(color_cat));
         handles.register_helper("euro", Box::new(into_euro));
         handles.register_helper("lower", Box::new(lower));
         handles.register_helper("image", Box::new(image));
