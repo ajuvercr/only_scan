@@ -79,8 +79,6 @@ impl Beans {
 #[derive(FromForm)]
 struct CategoriseForm<'r> {
     category: &'r str,
-    name: &'r str,
-    price: f32,
 }
 
 #[derive(Deserialize, Debug)]
@@ -154,15 +152,8 @@ async fn new_post(
 
     let mut items = Vec::new();
     for result in rdr.deserialize() {
-        // An error may occur, so abort the program in an unfriendly way.
-        // We will make this more friendly later!
-        let record: Statement = result.map_err(|e| {
-            println!("{:?}", e);
-            Redirect::to("/fava")
-        })?;
-        // Print a debug version of the record.
-        println!("{:?}", record);
-        items.push(record);
+        let record: StatementUgly = result.map_err(|e| Redirect::to("/fava"))?;
+        items.push(record.into());
     }
     let scan = Scan::new(items);
 
@@ -386,11 +377,11 @@ fn get_one(
             let items = json!({
                 "errors": [],
                 "item": item,
-                "categories_left": left,
+                "categories_left": beans.categories,
                 "categories_right": right,
             });
-            context.merge(items);
 
+            context.merge(items);
             Ok(Template::render("scan/item", context.value())).into()
         })
     })

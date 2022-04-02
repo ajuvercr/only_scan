@@ -7,8 +7,8 @@ use rocket::serde::{Deserialize, Serialize};
 
 mod my_date;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-struct Note {
+#[derive(Deserialize, Debug, Clone)]
+struct NoteUgly {
     #[serde(rename = "gestructureerde mededeling")]
     #[serde(deserialize_with = "my_date::deserialize_spacy_string")]
     structured: Option<String>,
@@ -16,7 +16,66 @@ struct Note {
     #[serde(deserialize_with = "my_date::deserialize_spacy_string")]
     free: Option<String>,
 }
-#[derive(Serialize, Debug, Clone)]
+
+impl NoteUgly {
+    fn into(self) -> Note {
+        let NoteUgly { structured, free } = self;
+        Note { structured, free }
+    }
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct StatementUgly {
+    #[serde(default)]
+    id: ID,
+    #[serde(default)]
+    category: Option<String>,
+    #[serde(rename = "Omschrijving")]
+    #[serde(deserialize_with = "my_date::deserialize_betaling")]
+    description: Result<Description, String>,
+    #[serde(rename = "Bedrag")]
+    amount: f32,
+    #[serde(rename = "Datum")]
+    #[serde(with = "my_date")]
+    date: NaiveDate,
+    #[serde(rename = "Naam tegenpartij")]
+    #[serde(deserialize_with = "my_date::deserialize_spacy_string")]
+    tegenpartij: Option<String>,
+    #[serde(flatten)]
+    note: NoteUgly,
+}
+
+impl StatementUgly {
+    pub fn into(self) -> Statement {
+        let StatementUgly {
+            id,
+            category,
+            description,
+            amount,
+            date,
+            tegenpartij,
+            note,
+        } = self;
+        let note = note.into();
+        Statement {
+            id,
+            category,
+            description: description.ok(),
+            amount,
+            date,
+            tegenpartij,
+            note,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct Note {
+    structured: Option<String>,
+    free: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Description {
     way: String,
     label: String,
@@ -73,23 +132,14 @@ impl Default for ID {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Statement {
-    #[serde(default)]
     pub id: ID,
-    #[serde(default)]
     category: Option<String>,
-    #[serde(rename = "Omschrijving")]
-    #[serde(deserialize_with = "my_date::deserialize_betaling")]
-    description: Result<Description, &'static str>,
-    #[serde(rename = "Bedrag")]
+    description: Option<Description>,
     amount: f32,
-    #[serde(rename = "Datum")]
     #[serde(with = "my_date")]
     date: NaiveDate,
-    #[serde(rename = "Naam tegenpartij")]
-    #[serde(deserialize_with = "my_date::deserialize_spacy_string")]
     tegenpartij: Option<String>,
-    #[serde(flatten)]
-    node: Note,
+    note: Note,
 }
 
 impl Statement {

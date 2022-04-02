@@ -33,9 +33,12 @@ where
     Ok(if st.is_empty() { None } else { Some(st) })
 }
 
-pub fn deserialize_betaling<'de, D>(deserializer: D) -> Result<Result<Description, &'static str>, D::Error>
-where D: de::Deserializer<'de>,
+pub fn deserialize_betaling<'de, D>(
+    deserializer: D,
+) -> Result<Result<Description, String>, D::Error>
+where
+    D: de::Deserializer<'de>,
 {
     let s: String = de::Deserialize::deserialize(deserializer)?;
-    Ok(s.parse())
+    Ok(s.parse().map_err(String::from))
 }

@@ -4,7 +4,9 @@ use crate::oauth::{AResult, AuthUser};
 use rocket::request::{FromRequest, Outcome, Request};
 use rocket::serde::json::serde_json::Map;
 use rocket::serde::json::{Value, json};
+use serde::Serialize;
 
+#[derive(Debug)]
 pub struct Context {
     inner: Map<String, Value>,
 }
@@ -41,7 +43,7 @@ fn merge(target: &mut Map<String, Value>, from: Map<String, Value>) {
     for (k, v) in from {
         if !target.contains_key(&k) {
             target.insert(k, v);
-            return;
+            continue;
         }
         if v.is_object() {
             assert!(target[&k].is_object());
