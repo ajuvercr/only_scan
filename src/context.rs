@@ -4,7 +4,6 @@ use crate::oauth::{AResult, AuthUser};
 use rocket::request::{FromRequest, Outcome, Request};
 use rocket::serde::json::serde_json::Map;
 use rocket::serde::json::{Value, json};
-use serde::Serialize;
 
 #[derive(Debug)]
 pub struct Context {

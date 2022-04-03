@@ -1,0 +1,57 @@
+{{#*inline "headers"}}
+<title>New | Scan | Only_Scan</title>
+<script src="https://kit.fontawesome.com/bea710e1ab.js" crossorigin="anonymous"></script>
+{{/inline}}
+
+{{#*inline "page"}}
+
+<form method="post" class="form" action="#">
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-icon is-danger"><i class="fa-solid fa-rocket"></i></div>
+                <h2 class="card-header-title">
+                    Do you want to continue?
+                </h2>
+            </div>
+
+            <div class="card-content">
+                <div class="block">
+                    <div class="block field">
+                        <label class="label"> What card did you use?</label>
+                        <div class="control">
+                            <div class="select">
+                                <select name="pay">
+                                    {{#each pay_options}}
+                                    <option data-value="{{this}}">{{this}}</option>
+                                    {{/each}}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="block">
+                    Confirming {{total}} items!
+                </p>
+                <div class="block">
+                    {{#each per_category}}
+                    <p>
+                        {{shorten_cat @key}}: {{this}}
+                    </p>
+                    {{/each}}
+                </div>
+            </div>
+
+            <div class="card-footer">
+                <div class="buttons">
+                    <input class="button is-primary" type="submit" value="Yes!">
+                    <button class="button">No</button>
+                </div>
+            </div>
+        </div>
+</form>
+
+{{/inline}}
+
+{{> base}}

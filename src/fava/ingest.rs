@@ -8,8 +8,7 @@ use rocket::serde::{Deserialize, Serialize};
 
 use rocket::data::ToByteUnit;
 use rocket::form::Form;
-use rocket::fs::TempFile;
-use std::io::{Cursor, Write};
+use std::io::Cursor;
 
 use crate::repository::Repository;
 
@@ -140,10 +139,11 @@ async fn new_post(
         .into_string()
         .await
         .map_err(|e| {
-            println!("{:?}", e);
+            eprintln!("{:?}", e);
             Redirect::to("/fava")
         })?
         .into_inner();
+
     let mut cursor = Cursor::new(string.replace(",", "."));
 
     let mut rdr = csv::ReaderBuilder::new()
@@ -152,7 +152,7 @@ async fn new_post(
 
     let mut items = Vec::new();
     for result in rdr.deserialize() {
-        let record: StatementUgly = result.map_err(|e| Redirect::to("/fava"))?;
+        let record: StatementUgly = result.map_err(|_| Redirect::to("/fava"))?;
         items.push(record.into());
     }
     let scan = Scan::new(items);
@@ -183,46 +183,59 @@ fn get_scan(
             .into()
         } else {
             beans.with(|beans| {
-                todo!()
-                // let pay_options: Vec<_> = beans.pay_options.iter().map(|(_, x)| x).collect();
-                // let categories: Vec<_> = beans.categories.iter().map(|(_, x)| x).collect();
-                // let total: usize = scan.items.iter().map(|item| item.price).sum();
+                let options = beans.pay_options.iter().map(|(_, x)| x).collect::<Vec<_>>();
 
-                // let items: Vec<_> = scan
-                //     .items
-                //     .iter()
-                //     .map(|item| {
-                //         json!({
-                //             "name": item.name,
-                //             "price": item.price,
-                //             "category": item.category,
-                //         })
-                //     })
-                //     .collect();
-                // let items = json!({
-                //     "errors": [],
-                //     "pay_options": pay_options,
-                //     "categories": categories,
-                //     "total": total,
-                //     "items": items,
-                //     "date": scan.date.format("%Y-%m-%d"),
-                // });
-                // context.merge(items);
+                let per_category = scan.items.iter().flat_map(|x| x.category.as_ref()).fold(
+                    std::collections::HashMap::new(),
+                    |mut h, e| {
+                        if let Some(c) = h.get_mut(e) {
+                            *c += 1;
+                        } else {
+                            h.insert(e.clone(), 1);
+                        }
+                        h
+                    },
+                );
 
-                // Ok(Template::render("scan/one", context.value())).into()
+                let add = json! {{
+                    "pay_options": options,
+                    "total": scan.items.len(),
+                    "per_category": per_category,
+                }};
+
+                context.merge(add);
+
+                Ok(Template::render("fava/ingest_last", context.value())).into()
             })
+            // let categories: Vec<_> = beans.categories.iter().map(|(_, x)| x).collect();
+            // let total: usize = scan.items.iter().map(|item| item.price).sum();
+
+            // let items: Vec<_> = scan
+            //     .items
+            //     .iter()
+            //     .map(|item| {
+            //         json!({
+            //             "name": item.name,
+            //             "price": item.price,
+            //             "category": item.category,
+            //         })
+            //     })
+            //     .collect();
+            // let items = json!({
+            //     "errors": [],
+            //     "pay_options": pay_options,
+            //     "categories": categories,
+            //     "total": total,
+            //     "items": items,
+            //     "date": scan.date.format("%Y-%m-%d"),
+            // });
+            // context.merge(items);
         }
     })
 }
 
-#[derive(FromForm, Debug, Clone)]
-struct FinishScan<'r> {
-    name: &'r str,
-    total: Vec<f64>,
-    rest: &'r str,
-    pay: Vec<&'r str>,
-    date: time::Date,
-}
+// #[derive(FromForm, Debug, Clone)]
+// struct FinishScan;
 
 #[derive(FromForm, Debug, Clone)]
 struct Payment<'r> {
@@ -300,10 +313,11 @@ impl fmt::Display for ScanOutput<'_, '_> {
     }
 }
 
-#[post("/<scan_id>", data = "<user_input>")]
+// #[post("/<scan_id>", data = "<user_input>")]
+#[post("/<scan_id>")]
 fn post_scan(
     scan_id: &str,
-    user_input: Form<FinishScan<'_>>,
+    // user_input: Form<FinishScan<'_>>,
     scans: &State<Scans>,
     beans: &State<Repository<Beans>>,
     config: &State<ScanConfigConfig>,
@@ -313,16 +327,7 @@ fn post_scan(
         return Some(e);
     }
 
-    println!("{:?}", user_input);
-
     let location = &config.beancount_location;
-    let zips = user_input.pay.iter().zip(user_input.total.iter());
-    let payments: Vec<_> = zips
-        .map(|(pay, &total)| Payment {
-            total: (total * 100.0) as usize,
-            pay,
-        })
-        .collect();
 
     scans.with_save(|scans| {
         let scan_index = scans.iter().position(|x| x.id == scan_id)?;

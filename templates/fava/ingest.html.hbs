@@ -1,6 +1,5 @@
 {{#*inline "headers"}}
 <title>New | Scan | Only_Scan</title>
-<link rel="stylesheet" href="/static/scan.css">
 {{/inline}}
 
 {{#*inline "page"}}
@@ -23,7 +22,7 @@
     const confirm = document.getElementById("confirm");
 
     async function upload() {
-        confirm.classlist.add("is-loading")
+        confirm.classList.add("is-loading")
         const resp = await fetch('/fava/ingest/new', { // Your POST endpoint
             method: 'POST',
             headers: {

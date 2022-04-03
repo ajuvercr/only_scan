@@ -133,7 +133,7 @@ impl Default for ID {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Statement {
     pub id: ID,
-    category: Option<String>,
+    pub category: Option<String>,
     description: Option<Description>,
     amount: f32,
     #[serde(with = "my_date")]
