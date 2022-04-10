@@ -11,35 +11,62 @@
 </head>
 
 <body class="is-fullheight">
-    <nav class="navbar" role="navigation" aria-label="main navigation">
-        <div class="navbar-brand">
-            <a class="navbar-item" href="/">Home</a>
-            <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false"
-                data-target="navbarBasicExample">
-                <span aria-hidden="true"></span>
-                <span aria-hidden="true"></span>
-                <span aria-hidden="true"></span>
-            </a>
-        </div>
-        <div class="navbar-menu">
-            <div class="navbar-start">
-                <a class="navbar-item" href="/desk">Desk</a>
-                <a class="navbar-item" href="/scan">Scan</a>
-                <a class="navbar-item" href="/scrum">SCRUm</a>
-                <a class="navbar-item" href="/fava">Fava</a>
+    <div class="navbar">
+        <!-- Navbar Starts here -->
+        <nav class="container is-family-secondary" role="navigation" aria-label="main navigation">
+            <!-- Navbar Brand containing the Heading -->
+            <div class="navbar-brand">
+                <a class="navbar-item has-background-info" href="#">
+                    <h1 class="has-text-white">OnlyScan</h1>
+                </a>
+
+                <!-- Burger Icons for responsive navbar -->
+                <a role="button" id="navbar-burger" class="navbar-burger" onclick="toggleShowNav(event)"
+                    aria-label="menu" aria-expanded="false" data-target="navbarBasicExample">
+                    <span aria-hidden="true"></span>
+                    <span aria-hidden="true"></span>
+                    <span aria-hidden="true"></span>
+                </a>
             </div>
-            <div class="navbar-end">
-                {{#if logged_in}}
-                <div class="navbar-item has-text-primary">{{name}}</div>
-                <a class="navbar-item" href="/oauth/logout">Logout</a>
-                {{else}}
-                <a class="navbar-item" href="/oauth/login">Login</a>
-                {{/if}}
+
+            <!-- Navbar Menu containing a list of items -->
+            <div id="navbar-content" class="navbar-menu is-light">
+                <div class="navbar-start">
+                    <a class="navbar-item" href="/">Home</a>
+                    <a class="navbar-item" href="/desk">Desk</a>
+                    <a class="navbar-item" href="/scan">Scan</a>
+                    <a class="navbar-item" href="/scrum">SCRUm</a>
+                    <a class="navbar-item" href="/fava">Fava</a>
+                </div>
+
+                <!-- Navbar End containing Sign Up and Sign In Buttons -->
+                <div class="navbar-end">
+
+                    {{#if logged_in}}
+                    <div class="navbar-item has-text-info">{{name}}</div>
+                    <a class="navbar-item is-light" href="/oauth/logout">Logout</a>
+                    {{else}}
+                    <a class="navbar-item has-text-success is-light" href="/oauth/login">
+                        <strong>Sign In</strong>
+                    </a>
+                    {{/if}}
+                </div>
             </div>
-        </div>
-    </nav>
+        </nav>
+    </div>
 
     {{> page}}
+
+
+
+    <script>
+        function toggleShowNav(event) {
+            const burger = document.getElementById("navbar-burger")
+            const content = document.getElementById("navbar-content")
+            burger.classList.toggle("is-active")
+            content.classList.toggle("is-active")
+        }
+    </script>
 </body>
 
 </html>

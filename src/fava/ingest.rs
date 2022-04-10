@@ -8,6 +8,7 @@ use rocket::serde::{Deserialize, Serialize};
 
 use rocket::data::ToByteUnit;
 use rocket::form::Form;
+use std::fs;
 use std::io::Cursor;
 
 use crate::repository::Repository;
@@ -207,29 +208,6 @@ fn get_scan(
 
                 Ok(Template::render("fava/ingest_last", context.value())).into()
             })
-            // let categories: Vec<_> = beans.categories.iter().map(|(_, x)| x).collect();
-            // let total: usize = scan.items.iter().map(|item| item.price).sum();
-
-            // let items: Vec<_> = scan
-            //     .items
-            //     .iter()
-            //     .map(|item| {
-            //         json!({
-            //             "name": item.name,
-            //             "price": item.price,
-            //             "category": item.category,
-            //         })
-            //     })
-            //     .collect();
-            // let items = json!({
-            //     "errors": [],
-            //     "pay_options": pay_options,
-            //     "categories": categories,
-            //     "total": total,
-            //     "items": items,
-            //     "date": scan.date.format("%Y-%m-%d"),
-            // });
-            // context.merge(items);
         }
     })
 }
@@ -239,85 +217,15 @@ fn get_scan(
 
 #[derive(FromForm, Debug, Clone)]
 struct Payment<'r> {
-    total: usize,
     pay: &'r str,
 }
 
-use std::collections::HashMap;
-struct ScanOutput<'r, 'b> {
-    items: HashMap<&'r str, usize>,
-    date: time::Date,
-    name: &'r str,
-    rest: &'r str,
-    payments: &'b Vec<Payment<'r>>,
-}
+use std::io::Write;
 
-impl<'r, 'b> ScanOutput<'r, 'b> {
-    pub fn new<T>(
-        raw_items: T,
-        date: time::Date,
-        name: &'r str,
-        rest: &'r str,
-        payments: &'b Vec<Payment<'r>>,
-    ) -> Self
-    where
-        T: IntoIterator<Item = &'b ScanItem>,
-        'b: 'r,
-    {
-        let mut items = HashMap::new();
-
-        for i in raw_items.into_iter().filter(|i| i.category.is_some()) {
-            let cat = i.category.as_ref().unwrap().as_str();
-            if let Some(vec) = items.get_mut(cat) {
-                *vec += i.price;
-            } else {
-                items.insert(cat, i.price);
-            }
-        }
-
-        Self {
-            items,
-            date,
-            name,
-            rest,
-            payments,
-        }
-    }
-}
-
-use std::{fmt, fs};
-impl fmt::Display for ScanOutput<'_, '_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let date_str = self.date.format("%Y-%m-%d");
-        writeln!(f, "{} * \"{}\"", date_str, self.name)?;
-        for payment in self.payments.iter() {
-            writeln!(
-                f,
-                "    {} -{:.2}",
-                payment.pay,
-                payment.total as f64 / 100.0
-            )?;
-        }
-
-        for (k, v) in self.items.iter() {
-            writeln!(f, "    {} {:.2}", k, *v as f64 / 100.0)?;
-        }
-
-        if self.items.values().sum::<usize>()
-            != self.payments.iter().map(|p| p.total).sum::<usize>()
-        {
-            writeln!(f, "    {}", self.rest)?;
-        }
-
-        Ok(())
-    }
-}
-
-// #[post("/<scan_id>", data = "<user_input>")]
-#[post("/<scan_id>")]
+#[post("/<scan_id>", data = "<user_input>")]
 fn post_scan(
     scan_id: &str,
-    // user_input: Form<FinishScan<'_>>,
+    user_input: Form<Payment<'_>>,
     scans: &State<Scans>,
     beans: &State<Repository<Beans>>,
     config: &State<ScanConfigConfig>,
@@ -331,29 +239,23 @@ fn post_scan(
 
     scans.with_save(|scans| {
         let scan_index = scans.iter().position(|x| x.id == scan_id)?;
-        // let scan = scans.get_mut(scan_index)?;
+        let scan = scans.get_mut(scan_index)?;
 
-        // let output = ScanOutput::new(
-        //     &scan.items,
-        //     user_input.date,
-        //     user_input.name,
-        //     user_input.rest,
-        //     &payments,
-        // );
+        let mut file = fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(location)
+            .ok()?;
 
-        // let mut file = fs::OpenOptions::new()
-        //     .create(true)
-        //     .append(true)
-        //     .open(location)
-        //     .ok()?;
+        scan.items.sort_by_key(|x| x.date);
+        for item in scan.items.iter() {
+            let output = item.to_output(user_input.pay);
+            writeln!(file, "\n{}", output).ok()?;
+        }
 
-        // writeln!(file, "\n{}", output).ok()?;
-
-        // beans.with_save(|beans| {
-        //     for pay in user_input.pay.iter() {
-        //         beans.inc_pay(pay);
-        //     }
-        // });
+        beans.with_save(|beans| {
+            beans.inc_pay(user_input.pay);
+        });
 
         scans.remove(scan_index);
         Redirect::to("/fava/ingest").into()

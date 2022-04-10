@@ -137,7 +137,7 @@ pub struct Statement {
     description: Option<Description>,
     amount: f32,
     #[serde(with = "my_date")]
-    date: NaiveDate,
+    pub date: NaiveDate,
     tegenpartij: Option<String>,
     note: Note,
 }
@@ -145,6 +145,22 @@ pub struct Statement {
 impl Statement {
     pub fn needs_categorised(&self) -> bool {
         self.category.is_none()
+    }
+    pub fn to_output<'a, 'b>(&'b self, pay: &'a str) -> ScanOutput<'a, 'b> {
+        let name = self
+            .description
+            .as_ref()
+            .map(|x| x.label.as_str())
+            .or(self.tegenpartij.as_ref().map(String::as_str))
+            .unwrap_or("Nothing found :(");
+
+        ScanOutput {
+            date: &self.date,
+            pay,
+            amount: self.amount,
+            category: self.category.as_ref().unwrap().to_string(),
+            name: name.to_string(),
+        }
     }
 }
 
@@ -202,5 +218,24 @@ impl ScanItem {
 
     pub fn needs_categorised(&self) -> bool {
         self.category.is_none()
+    }
+}
+
+pub struct ScanOutput<'r, 'a> {
+    date: &'a NaiveDate,
+    name: String,
+    pay: &'r str,
+    amount: f32,
+    category: String,
+}
+
+use std::fmt;
+impl fmt::Display for ScanOutput<'_, '_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let date_str = self.date.format("%Y-%m-%d");
+        writeln!(f, "{} * \"{}\"", date_str, self.name)?;
+        writeln!(f, "    {} {:.2}", self.pay, self.amount)?;
+        writeln!(f, "    {}", self.category)?;
+        Ok(())
     }
 }

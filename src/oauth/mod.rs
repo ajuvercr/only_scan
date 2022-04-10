@@ -1,4 +1,3 @@
-
 use rocket::{
     http::{Cookie, CookieJar},
     response::{content::Html, Redirect},
@@ -87,17 +86,27 @@ async fn callback<'r>(
                 .ok()
                 .and_then(|x| String::from_utf8(x).ok())
         })
-        .unwrap_or("".to_string());
+        .unwrap_or("/".to_string());
 
     let content = format!("<html><p>redirecting to <a href={:?}>{}</a></p><script>window.onload = () => (setTimeout(() => window.location.href = {:?}, 500))</script></html>", url, url, url);
     Some(Html(content))
 }
 
 #[get("/login?<from>")]
-pub fn login(from: &str, config: &State<util::Config>, host: HostHeader<'_>) -> Redirect {
-    let state = base64::encode_config(from, base64::URL_SAFE);
-    let url = format!("{}/oauth/authorize?response_type=code&client_id={}&redirect_uri={}/oauth/callback&state={}",
-                      config.oauth_base, config.client_id, host.get(),state );
+pub fn login(from: Option<&str>, config: &State<util::Config>, host: HostHeader<'_>) -> Redirect {
+    let url = if let Some(from) = from {
+        let state = base64::encode_config(from, base64::URL_SAFE);
+        format!("{}/oauth/authorize?response_type=code&client_id={}&redirect_uri={}/oauth/callback&state={}",
+                      config.oauth_base, config.client_id, host.get(),state )
+    } else {
+        format!(
+            "{}/oauth/authorize?response_type=code&client_id={}&redirect_uri={}/oauth/callback",
+            config.oauth_base,
+            config.client_id,
+            host.get()
+        )
+    };
+
     println!("login url: {}", url);
     Redirect::to(url).into()
 }

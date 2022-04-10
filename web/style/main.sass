@@ -1,11 +1,40 @@
 
-$white: #f7f4e9
-$black: #1d1d2d
-$primary: #3cbcc3
-$link: #eba63f
-$info: #3cbcc3
-$success: #438945
-$warning: #eba63f
-$danger: #e40c2b
+/* Color Theme Swatches in Hex */
+$WhiteBlack-1-hex: #011640
+$WhiteBlack-2-hex: #012840
+$WhiteBlack-3-hex: #6B9FBF
+$WhiteBlack-4-hex: #C9E2F2
+$WhiteBlack-5-hex: #D8F2F0
+
+@font-face
+   font-family: bodoni
+   src: url('/static/fonts/bodoni/BodoniModa_9pt/BodoniModa_9pt-Regular.ttf')
+
+@font-face
+   font-family: century
+   src: url('/static/fonts/Century/Century Expanded Regular.otf')
+
+@font-face
+   font-family: futura
+   src: url('/static/fonts/futura/futura medium bt.ttf')
+
+@font-face
+   font-family: garamond
+   src: url('/static/fonts/garamond/EBGaramond-Regular.ttf')
+
+@font-face
+   font-family: helvetica
+   src: url('/static/fonts/helvetica/Helvetica.ttf')
+
+
+$family-primary: helvetica
+$family-secondary: futura
+
+@import "./slate/_variables.sass"
 
 @import "../node_modules/bulma/bulma.sass"
+
+.navbar > .container .navbar-menu, .container > .navbar .navbar-menu
+   margin-right: unset
+.navbar > .container .navbar-brand, .container > .navbar .navbar-brand
+   margin-left: unset
