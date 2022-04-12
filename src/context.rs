@@ -3,7 +3,7 @@ use std::convert::Infallible;
 use crate::oauth::{AResult, AuthUser};
 use rocket::request::{FromRequest, Outcome, Request};
 use rocket::serde::json::serde_json::Map;
-use rocket::serde::json::{Value, json};
+use rocket::serde::json::{json, Value};
 
 #[derive(Debug)]
 pub struct Context {
@@ -22,15 +22,30 @@ impl<'r> FromRequest<'r> for Context {
     type Error = Infallible;
 
     async fn from_request(req: &'r Request<'_>) -> Outcome<Self, Self::Error> {
+        let loc = format!(
+            "/{}",
+            req.uri().path().segments().next().unwrap_or_default()
+        );
+        let routes = vec![
+            ("/", "Home"),
+            ("/scan", "Scan"),
+            ("/scrum", "Scrum"),
+            ("/fava", "Fava"),
+        ];
+
         match req.guard::<AuthUser>().await {
             Outcome::Success(AResult::Ok(user)) => Outcome::Success(Self {
                 inner: to_map(json! {{
+                    "loc": loc,
+                    "routes": routes,
                     "name": user.user,
                     "logged_in": true,
                 }}),
             }),
             _ => Outcome::Success(Self {
                 inner: to_map(json! {{
+                    "loc": loc,
+                    "routes": routes,
                     "logged_in": false,
                 }}),
             }),
@@ -53,12 +68,11 @@ fn merge(target: &mut Map<String, Value>, from: Map<String, Value>) {
     }
 }
 
-
 impl Context {
     pub fn merge(&mut self, obj: Value) {
         let map = to_map(obj);
         merge(&mut self.inner, map);
-   }
+    }
 
     pub fn add<T: Into<Value>>(&mut self, key: &str, value: T) {
         self.inner.insert(key.to_string(), value.into());

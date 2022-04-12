@@ -16,7 +16,7 @@
         <nav class="container is-family-secondary" role="navigation" aria-label="main navigation">
             <!-- Navbar Brand containing the Heading -->
             <div class="navbar-brand">
-                <a class="navbar-item has-background-info" href="#">
+                <a class="navbar-item has-background-info slanted" href="#">
                     <h1 class="has-text-white">OnlyScan</h1>
                 </a>
 
@@ -32,11 +32,10 @@
             <!-- Navbar Menu containing a list of items -->
             <div id="navbar-content" class="navbar-menu is-light">
                 <div class="navbar-start">
-                    <a class="navbar-item" href="/">Home</a>
-                    <a class="navbar-item" href="/desk">Desk</a>
-                    <a class="navbar-item" href="/scan">Scan</a>
-                    <a class="navbar-item" href="/scrum">SCRUm</a>
-                    <a class="navbar-item" href="/fava">Fava</a>
+                    {{#each routes as |route|}}
+                        <a class="navbar-item slanted {{#if (eq route.[0] @root.loc)}} has-background-primary {{/if}}"
+                        href="{{route.[0]}}">{{route.[1]}}</a>
+                    {{/each}}
                 </div>
 
                 <!-- Navbar End containing Sign Up and Sign In Buttons -->
@@ -44,9 +43,9 @@
 
                     {{#if logged_in}}
                     <div class="navbar-item has-text-info">{{name}}</div>
-                    <a class="navbar-item is-light" href="/oauth/logout">Logout</a>
+                    <a class="navbar-item is-light slanted" href="/oauth/logout">Logout</a>
                     {{else}}
-                    <a class="navbar-item has-text-success is-light" href="/oauth/login">
+                    <a class="navbar-item has-text-success is-light slanted" href="/oauth/login">
                         <strong>Sign In</strong>
                     </a>
                     {{/if}}

@@ -1,0 +1,82 @@
+/* Color Theme Swatches in Hex */
+$WhiteBlack-1-hex: #011640;
+$WhiteBlack-2-hex: #012840;
+$WhiteBlack-3-hex: #6b9fbf;
+$WhiteBlack-4-hex: #c9e2f2;
+$WhiteBlack-5-hex: #d8f2f0;
+
+@font-face {
+  font-family: bodoni;
+  src: url("/static/fonts/bodoni/BodoniModa_9pt/BodoniModa_9pt-Regular.ttf");
+}
+
+@font-face {
+  font-family: century;
+  src: url("/static/fonts/Century/Century Expanded Regular.otf");
+}
+
+@font-face {
+  font-family: futura;
+  src: url("/static/fonts/futura/futura medium bt.ttf");
+}
+
+@font-face {
+  font-family: garamond;
+  src: url("/static/fonts/garamond/EBGaramond-Regular.ttf");
+}
+
+@font-face {
+  font-family: helvetica;
+  src: url("/static/fonts/helvetica/Helvetica.ttf");
+}
+
+$family-primary: helvetica;
+$family-secondary: futura;
+
+@import "./slate/_variables.sass";
+
+@import "../node_modules/bulma/bulma.sass";
+
+.navbar > .container .navbar-menu,
+.container > .navbar .navbar-menu {
+  margin-right: unset;
+}
+
+.navbar > .container .navbar-brand,
+.container > .navbar .navbar-brand {
+  margin-left: unset;
+}
+
+.slanted {
+  $slant-half: 10px;
+  &:before {
+    content: "";
+    z-index: -1;
+    position: absolute;
+    left: $slant-half;
+    height: 100%;
+    width: 100%;
+    background-color: inherit;
+    -webkit-transform: skewX(-10deg);
+    -moz-transform: skewX(-10deg);
+    -ms-transform: skewX(-10deg);
+    transform: skewX(-10deg);
+  }
+
+  &:after {
+    position: absolute;
+    z-index: -1;
+    content: "";
+    right: $slant-half;
+    height: 100%;
+    width: 100%;
+    background-color: inherit;
+    -webkit-transform: skewX(-10deg);
+    -moz-transform: skewX(-10deg);
+    -ms-transform: skewX(-10deg);
+    transform: skewX(-10deg);
+  }
+
+  margin-left: $slant-half;
+  margin-right: $slant-half;
+}

@@ -8,6 +8,7 @@ use rocket::serde::Deserialize;
 use rocket::{Build, Rocket};
 use rocket_dyn_templates::Template;
 
+use crate::context::Context;
 use crate::oauth::AuthUser;
 use crate::repository::db_repo::Repo as DbRepo;
 use crate::repository::Repository as Repo;
@@ -109,10 +110,15 @@ fn create_one(mut db_conn: DbConn) -> Option<Redirect> {
 }
 
 #[get("/<id>")]
-fn get_one(mut db_conn: DbConn, id: i32) -> Option<Template> {
+fn get_one(mut db_conn: DbConn, id: i32, mut ctx: Context) -> Option<Template> {
     let tasks = get_tasks(&mut db_conn).ok()?;
     let task = TASK_TABLE.get_by_id(id, &mut db_conn).ok()?;
-    Template::render("scrum/detail", task.to_value(&tasks)).into()
+
+    if let Some(x) = task.to_value(&tasks) {
+        ctx.merge(x);
+    }
+
+    Template::render("scrum/detail", ctx.value()).into()
 }
 
 #[delete("/<id>")]
@@ -164,7 +170,11 @@ fn patch_child(mut db_conn: DbConn, id: i32, update: Json<TaskBuilder>) -> Optio
 }
 
 #[get("/")]
-fn get(mut db_conn: DbConn, user: AuthUser) -> Option<Result<Template, Redirect>> {
+fn get(
+    mut db_conn: DbConn,
+    user: AuthUser,
+    mut ctx: Context,
+) -> Option<Result<Template, Redirect>> {
     if let AuthUser::Err(e) = user {
         return Some(Err(e.into()));
     }
@@ -175,9 +185,9 @@ fn get(mut db_conn: DbConn, user: AuthUser) -> Option<Result<Template, Redirect>
         .filter(|x| x.parent.is_none())
         .flat_map(|t: &Task| t.to_value(&tasks))
         .collect::<Vec<_>>();
-    let ctx = rocket::serde::json::serde_json::json!({ "tasks": tasks });
+    ctx.merge(rocket::serde::json::serde_json::json!({ "tasks": tasks }));
 
-    Some(Ok(Template::render("scrum/index", ctx)))
+    Some(Ok(Template::render("scrum/index", ctx.value())))
 }
 
 pub fn fuel(rocket: Rocket<Build>) -> Rocket<Build> {
