@@ -47,29 +47,16 @@ $family-secondary: futura;
   margin-left: unset;
 }
 
+$slant-quarter: 5px;
+$slant-half: 2 * $slant-quarter;
 .slanted {
-  $slant-half: 10px;
   &:before {
     content: "";
-    z-index: -1;
+    z-index: -5;
     position: absolute;
-    left: $slant-half;
+    left: -$slant-half;
     height: 100%;
-    width: 100%;
-    background-color: inherit;
-    -webkit-transform: skewX(-10deg);
-    -moz-transform: skewX(-10deg);
-    -ms-transform: skewX(-10deg);
-    transform: skewX(-10deg);
-  }
-
-  &:after {
-    position: absolute;
-    z-index: -1;
-    content: "";
-    right: $slant-half;
-    height: 100%;
-    width: 100%;
+    width: calc(100% + (2 * $slant-half));
     background-color: inherit;
     -webkit-transform: skewX(-10deg);
     -moz-transform: skewX(-10deg);
@@ -79,4 +66,15 @@ $family-secondary: futura;
 
   margin-left: $slant-half;
   margin-right: $slant-half;
+}
+
+@media screen and (max-width: 1024px) {
+  .navbar {
+    margin-left: -$slant-half;
+  }
+}
+
+.navbar-dropdown {
+  border-top: unset;
+  margin-left: -$slant-quarter;
 }

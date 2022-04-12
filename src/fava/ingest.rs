@@ -15,12 +15,6 @@ use crate::repository::Repository;
 
 use super::models::*;
 
-// #[get("/")]
-// async fn ingest(mut context: Context, user: AuthUser) -> Result<Template, Redirect> {
-//     let user: User = unwrap!(user);
-//     Ok(Template::render("fava/fava", context.value()))
-// }
-
 macro_rules! get_foo {
     (item mut $state:expr, $item_id:expr) => {
         $state
@@ -104,7 +98,7 @@ fn default_beancount_location() -> String {
 }
 
 #[get("/")]
-fn get(scans: &State<Scans>, user: AuthUser) -> Result<Template, Redirect> {
+fn get(scans: &State<Scans>, user: AuthUser, mut ctx: Context) -> Result<Template, Redirect> {
     unwrap!(user);
     scans.with(|scans| {
         let scans: Vec<_> = scans
@@ -118,12 +112,11 @@ fn get(scans: &State<Scans>, user: AuthUser) -> Result<Template, Redirect> {
             })
             .collect();
 
-        let context = json!({
-            "errors": [],
-            "scans": scans,
-        });
+        ctx.merge(json!({
+        "scans": scans,
 
-        Ok(Template::render("fava/ingest", &context))
+        }));
+        Ok(Template::render("fava/ingest", &ctx.value()))
     })
 }
 

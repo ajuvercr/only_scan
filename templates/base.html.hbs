@@ -16,9 +16,9 @@
         <nav class="container is-family-secondary" role="navigation" aria-label="main navigation">
             <!-- Navbar Brand containing the Heading -->
             <div class="navbar-brand">
-                <a class="navbar-item has-background-info slanted" href="#">
+                <div class="navbar-item has-background-info slanted" href="#">
                     <h1 class="has-text-white">OnlyScan</h1>
-                </a>
+                </div>
 
                 <!-- Burger Icons for responsive navbar -->
                 <a role="button" id="navbar-burger" class="navbar-burger" onclick="toggleShowNav(event)"
@@ -33,16 +33,30 @@
             <div id="navbar-content" class="navbar-menu is-light">
                 <div class="navbar-start">
                     {{#each routes as |route|}}
-                        <a class="navbar-item slanted {{#if (eq route.[0] @root.loc)}} has-background-primary {{/if}}"
-                        href="{{route.[0]}}">{{route.[1]}}</a>
+                    {{#if route.subpaths}}
+                    <div class="navbar-item has-dropdown is-hoverable">
+                        <a class="navbar-link slanted {{#if (eq route.path @root.loc)}} has-background-primary {{/if}}"
+                            href="{{route.path}}">{{route.name}} </a>
+
+                        <div class="navbar-dropdown ">
+                            {{#each route.subpaths as |sub|}}
+                            <a class="navbar-item" href="{{sub.path}}">{{sub.name}}</a>
+                            {{/each}}
+                        </div>
+                    </div>
+                    {{else}}
+                    <a class="navbar-item slanted {{#if (eq route.path @root.loc)}} has-background-primary {{/if}}"
+                        href="{{route.path}}">{{route.name}}</a>
+                    {{/if}}
                     {{/each}}
+
                 </div>
 
                 <!-- Navbar End containing Sign Up and Sign In Buttons -->
                 <div class="navbar-end">
 
                     {{#if logged_in}}
-                    <div class="navbar-item has-text-info">{{name}}</div>
+                    <div class="navbar-item has-text-info slanted">{{name}}</div>
                     <a class="navbar-item is-light slanted" href="/oauth/logout">Logout</a>
                     {{else}}
                     <a class="navbar-item has-text-success is-light slanted" href="/oauth/login">

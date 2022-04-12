@@ -26,12 +26,17 @@ impl<'r> FromRequest<'r> for Context {
             "/{}",
             req.uri().path().segments().next().unwrap_or_default()
         );
-        let routes = vec![
-            ("/", "Home"),
-            ("/scan", "Scan"),
-            ("/scrum", "Scrum"),
-            ("/fava", "Fava"),
-        ];
+        let routes = json! {[
+            {"path": "/", "name": "Home"},
+            {"path": "/scan", "name": "Scan"},
+            {"path": "/scrum", "name": "Scrum"},
+            {"path": "/fava", "name": "Fava", "subpaths": [
+                {"path": "/fava/ingest", "name": "Ingest"},
+                {"path": "/fava/beancount", "name": "Beancount"},
+                {"path": "/fava/graphs", "name": "Graphs"},
+            ]},
+
+        ]};
 
         match req.guard::<AuthUser>().await {
             Outcome::Success(AResult::Ok(user)) => Outcome::Success(Self {

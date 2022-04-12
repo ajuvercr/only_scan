@@ -1,14 +1,11 @@
 use rocket::{fairing::AdHoc, response::Redirect, routes, Build, Rocket, State};
 use rocket_dyn_templates::Template;
 
-use crate::{
-    context::Context,
-    oauth::AuthUser,
-};
+use crate::{context::Context, oauth::AuthUser};
 use rocket::serde::Deserialize;
 
-mod models;
 mod ingest;
+mod models;
 
 #[derive(Deserialize, Debug)]
 struct FavaConfig {
@@ -32,8 +29,8 @@ async fn beancount(
 }
 
 #[get("/")]
-async fn index(context: Context) -> Result<Template, Redirect> {
-    Ok(Template::render("fava/index", context.value()))
+async fn index() -> Redirect {
+    Redirect::to("/fava/ingest")
 }
 
 pub fn fuel(rocket: Rocket<Build>) -> Rocket<Build> {
