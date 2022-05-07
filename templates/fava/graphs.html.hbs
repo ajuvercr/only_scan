@@ -1,0 +1,55 @@
+{{#*inline "headers"}}
+<title>Fava | Only_Scan</title>
+<script type="module" src="/static/dist/bundle.js"></script>
+{{/inline}}
+
+
+{{#*inline "page"}}
+
+<div class="container is-fullheight-with-navbar" >
+    <div style="display: flex; align-items: center; gap: 2rem; margin-bottom: 2rem;">
+        <p>Days per point <input type="number" value=14 id="samplesPerDay"></p>
+        <button id="go_parent">parent</button>
+        <p id="my_help"></p>
+    </div>
+
+    <div id="my_dataviz"></div>
+
+</div>
+
+<script type="module">
+    import { setupGraphs } from "/static/dist/bundle.js";
+    setupGraphs("/fava/graphs/input.csv", "#my_dataviz", "#my_help", "#go_parent")
+</script>
+
+<style>
+    path.hover {
+        box-shadow: 0px 0px 20px rgba(255, 0, 0, 1);
+        stroke-width: 5px;
+    }
+
+    path {
+        transition: 0.2s;
+        transition-property: stroke-width;
+    }
+
+    .info {
+        stroke: white;
+    }
+
+    text.info {
+        z-index: 5;
+        stroke: rgb(0, 0, 0);
+        stroke-width: 2px;
+        stroke-linecap: butt;
+        stroke-linejoin: miter;
+        font-weight: 800;
+        fill: white;
+        font-size: 18px;
+        paint-order: stroke;
+        font-family: monospace;
+    }
+</style>
+{{/inline}}
+
+{{> base}}

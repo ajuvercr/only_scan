@@ -5,14 +5,24 @@
   "main": "index.js",
   "scripts": {
     "build:css": "sass style/main.scss dist/main.css",
-    "build": "npm run build:css",
+    "build:graphs": "tsc && rollup --format es --name myBundle -c",
+    "build": "npm run build:css && npm run build:graphs",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@types/d3": "^7.1.0",
+    "@types/node": "^17.0.21",
+    "rollup": "^2.68.0",
+    "rollup-plugin-node-resolve": "^5.2.0",
+    "rollup-plugin-watch": "^1.0.1",
+    "typescript": "^4.6.3",
     "bulma": "^0.9.3",
     "bulma-prefers-dark": "^0.1.0-beta.1",
     "sass": "^1.49.11"
+  },
+  "dependencies": {
+    "d3": "^7.4.0"
   }
 }

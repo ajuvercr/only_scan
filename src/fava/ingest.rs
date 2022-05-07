@@ -2,6 +2,7 @@ use rocket::Data;
 use rocket::{fairing::AdHoc, response::Redirect, routes, Build, Rocket, State};
 use rocket_dyn_templates::Template;
 
+use crate::fava::ScanConfigConfig;
 use crate::{context::Context, oauth::AuthUser};
 use rocket::serde::json::serde_json::json;
 use rocket::serde::{Deserialize, Serialize};
@@ -73,28 +74,6 @@ impl Beans {
 #[derive(FromForm)]
 struct CategoriseForm<'r> {
     category: &'r str,
-}
-
-#[derive(Deserialize, Debug)]
-struct ScanConfigConfig {
-    #[serde(default = "default_location")]
-    scan_config_location: String,
-    #[serde(default = "default_beans_location")]
-    bean_config_location: String,
-    #[serde(default = "default_beancount_location")]
-    beancount_location: String,
-}
-
-fn default_location() -> String {
-    "scan_config.json".to_string()
-}
-
-fn default_beans_location() -> String {
-    "beans_cofig.json".to_string()
-}
-
-fn default_beancount_location() -> String {
-    "main.bean".to_string()
 }
 
 #[get("/")]

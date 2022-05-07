@@ -4,6 +4,7 @@ use rocket_dyn_templates::Template;
 use crate::{context::Context, oauth::AuthUser};
 use rocket::serde::Deserialize;
 
+mod graphs;
 mod ingest;
 mod models;
 
@@ -11,6 +12,28 @@ mod models;
 struct FavaConfig {
     #[serde(default = "fava_base")]
     fava_base: String,
+}
+
+#[derive(Deserialize, Debug)]
+struct ScanConfigConfig {
+    #[serde(default = "default_location")]
+    scan_config_location: String,
+    #[serde(default = "default_beans_location")]
+    bean_config_location: String,
+    #[serde(default = "default_beancount_location")]
+    beancount_location: String,
+}
+
+fn default_location() -> String {
+    "scan_config.json".to_string()
+}
+
+fn default_beans_location() -> String {
+    "beans_cofig.json".to_string()
+}
+
+fn default_beancount_location() -> String {
+    "main.bean".to_string()
 }
 
 fn fava_base() -> String {
@@ -35,6 +58,7 @@ async fn index() -> Redirect {
 
 pub fn fuel(rocket: Rocket<Build>) -> Rocket<Build> {
     let rocket = ingest::fuel(rocket);
+    let rocket = graphs::fuel(rocket);
     rocket
         .mount("/fava", routes![index, beancount])
         .attach(AdHoc::config::<FavaConfig>())
