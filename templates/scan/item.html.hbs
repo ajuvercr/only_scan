@@ -27,10 +27,13 @@
                 naar {{item.tegenpartij}}
             </p>
             {{/if}}
+            <p>
+            {{ euro item.amount}}
+            </p>
         </div>
     </div>
 
-    <div class="columns block is-variable is-multiline is-centered">
+    <div class="columns block is-variable is-multiline is-centered has-text-black">
         {{#each categories_left}}
         <div class="column is-one-quarter has-text-weight-bold is-family-monospace" onclick='submit("{{this.1}}")'>
             <div class="notification has-text-centered" style="background-color: {{color_cat this.1}}">{{shorten_cat this.1}}</div>

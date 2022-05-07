@@ -61,7 +61,7 @@ impl StatementUgly {
             id,
             category,
             description: description.ok(),
-            amount,
+            amount: (amount * 100.0) as isize,
             date,
             tegenpartij,
             note,
@@ -135,7 +135,7 @@ pub struct Statement {
     pub id: ID,
     pub category: Option<String>,
     description: Option<Description>,
-    amount: f32,
+    amount: isize,
     #[serde(with = "my_date")]
     pub date: NaiveDate,
     tegenpartij: Option<String>,
@@ -157,7 +157,7 @@ impl Statement {
         ScanOutput {
             date: &self.date,
             pay,
-            amount: self.amount,
+            amount: self.amount as f32 / 100.0,
             category: self.category.as_ref().unwrap().to_string(),
             name: name.to_string(),
         }

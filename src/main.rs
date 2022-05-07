@@ -75,7 +75,7 @@ handlebars_helper!(color_cat: |x: str| {
     try_one.or(llast).map(|&x| x).unwrap_or("#BBF2D0")
 });
 
-handlebars_helper!(into_euro: |x: u64| format!("{:.2}", x as f64 / 100.0));
+handlebars_helper!(into_euro: |x: i64| format!("{:.2}", x as f64 / 100.0));
 handlebars_helper!(eq: |x: str, y: str| x == y);
 handlebars_helper!(lower: |x: str| x.to_lowercase());
 handlebars_helper!(image: |name: Json| {
