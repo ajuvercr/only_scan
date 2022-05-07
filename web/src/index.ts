@@ -76,7 +76,7 @@ const colors = [
     "#ffff33",
     "#a65628",
     "#f781bf",
-    "#999999",
+    "cyan"
 ];
 
 
@@ -169,8 +169,9 @@ export async function setupGraphs(location: string, svgContainerId: string, help
     const help = d3.select(helpId);
     const parentButton = d3.select(parentId);
 
-    let daysPerSample = 14;
-    document.getElementById("samplesPerDay").addEventListener("change", d => {
+    const samplePerDayField = <HTMLInputElement> document.getElementById("samplesPerDay");
+    let daysPerSample = parseInt(samplePerDayField.value);
+    samplePerDayField.addEventListener("change", d => {
         const target = d.target as HTMLInputElement;
         daysPerSample = parseInt(target.value);
         update(current.data);
