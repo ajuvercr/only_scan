@@ -249,15 +249,14 @@ fn get_one(
         let item = get_foo!(item scan, ID(item_id.to_string()));
 
         beans.with(|beans| {
-            let (left, right) = beans.categories.split_at(9);
+            // let (_left, right) = beans.categories.split_at(9);
 
             // let categories: Vec<_> = beans.categories.iter().map(|(_, x)| x).collect();
 
             let items = json!({
                 "errors": [],
                 "item": item,
-                "categories_left": beans.categories,
-                "categories_right": right,
+                "categories_left": beans.categories
             });
 
             context.merge(items);

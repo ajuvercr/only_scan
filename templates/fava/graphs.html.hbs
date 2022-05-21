@@ -6,20 +6,41 @@
 
 {{#*inline "page"}}
 
-<div class="container is-fullheight-with-navbar" >
-    <div style="display: flex; align-items: center; gap: 2rem; margin-bottom: 2rem;">
-        <p>Days per point <input type="number" value=14 id="samplesPerDay"></p>
-        <button id="go_parent">parent</button>
-        <p id="my_help"></p>
+
+<div class="container is-fullheight-with-navbar">
+    <div class="m-4">
+        <p class="level-left is-8 gap">
+            Upload your another beancount file.
+            <input type="file" id="fileInput">
+            <button class="button" onclick="yeet()">Yeet!</button>
+        </p>
     </div>
 
+    <div class="m-4 ">
+        <p class="level-left gap">
+            Days per point <input type="number" value=14 id="samplesPerDay">
+            <button class="button" id="go_parent">parent</button>
+        </p>
+    </div>
+
+    <p id="my_help"></p>
     <div id="my_dataviz"></div>
 
 </div>
 
 <script type="module">
     import { setupGraphs } from "/static/dist/bundle.js";
-    setupGraphs("/fava/graphs/input.csv", "#my_dataviz", "#my_help", "#go_parent")
+    // setupGraphs("/fava/graphs/input.csv", "#my_dataviz", "#my_help", "#go_parent")
+
+    function yeet() {
+        const file = document.getElementById("fileInput").files[0];
+        const fd = new FormData();
+        fd.append("file", file);
+
+        setupGraphs("/fava/graphs/input.csv", "#my_dataviz", "#my_help", "#go_parent", "", "", fd);
+    }
+
+    window.yeet = yeet;
 </script>
 
 <style>

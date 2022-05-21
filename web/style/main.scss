@@ -78,3 +78,15 @@ $slant-half: 2 * $slant-quarter;
   border-top: unset;
   margin-left: -$slant-quarter;
 }
+
+.delete::after {
+  background-color: white;
+}
+
+.delete {
+  background-color: dimgray;
+}
+
+.gap {
+  gap: 1.5em;
+}

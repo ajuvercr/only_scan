@@ -6,57 +6,52 @@
 
 <form id="form" class="form container" action="#" method="POST">
     <input id="category" name="category" class="hidden" hidden>
-    <div class="card block is-lowercase">
-        <div class="card-header has-text-centered">
-            Date: {{item.date}}
-        </div>
+    <div class="m-4 media is-lowercase">
 
-        <div class="card-content">
+        <div class="media-content">
+
             <p>
                 {{item.description.way}}
                 {{#if item.description.user}}
                 door {{item.description.user}}
                 {{/if}}
             </p>
+
             <p>
                 {{item.description.label}}
                 {{item.note.free}}
             </p>
+
             {{#if item.tegenpartij}}
             <p>
                 naar {{item.tegenpartij}}
             </p>
             {{/if}}
+
             <p>
-            {{ euro item.amount}}
+                <span class="has-text-weight-bold">{{ euro item.amount}}</span> euro op {{item.date}}
             </p>
+        </div>
+
+        <div class="media-right">
+
+            <button class="delete is-large is-light"="delete_f(event)">
+                Delete
+            </button>
         </div>
     </div>
 
     <div class="columns block is-variable is-multiline is-centered has-text-black">
         {{#each categories_left}}
         <div class="column is-one-quarter has-text-weight-bold is-family-monospace" onclick='submit("{{this.1}}")'>
-            <div class="notification has-text-centered" style="background-color: {{color_cat this.1}}">{{shorten_cat this.1}}</div>
+            <div class="notification has-text-centered" style="background-color: {{color_cat this.1}}">{{shorten_cat
+                this.1}}</div>
         </div>
         {{/each}}
     </div>
 
     <div class="bottom fields">
-        <button onclick="delete_f(event)">
-            Delete
-        </button>
-
-        <input placeholder="Other categories" list="suggestionList" id="answerInput" autocomplete="off">
-
-        <button onclick="submit2()">
-            Submit!
-        </button>
     </div>
-    <datalist id="suggestionList">
-        {{#each categories_right}}
-        <option data-value="{{this.1}}">{{shorten_cat this.1}}</option>
-        {{/each}}
-    </datalist>
 </form>
 
 {{/inline}}

@@ -4,7 +4,7 @@ port = 8000
 
 desk_server_ip = "192.168.0.69"
 fava_base = "http://localhost:5000/"
-beancount_location = "test.bean"
+beancount_location = "main.bean"
 
 [default]
 database_url = "postgres://onlyscan:password@localhost/diesel_demo"

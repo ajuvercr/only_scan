@@ -15,6 +15,32 @@ type Seg = {
     parent?: Seg;
 };
 
+
+class SumBuffer {
+    private readonly size: number;
+    private at: number = 0;
+    private readonly buffer: number[];
+    private total: number;
+
+    constructor(size: number) {
+        this.size = size;
+        this.buffer = new Array(size).map(() => 0);
+    }
+
+    push(item: number) {
+        this.buffer[this.at] = item;
+        this.total += item;
+
+        this.at++;
+        if (this.at === this.size) this.at = 0;
+        this.total -= this.buffer[this.at];
+    }
+
+    sum(): number {
+        return this.total;
+    }
+}
+
 var parseDate = d3.timeParse("%Y-%m-%d");
 
 function conversor(d: any): Row {
@@ -25,11 +51,14 @@ function conversor(d: any): Row {
     return d;
 }
 
-function getInput(loc: string): Promise<Seg> {
+
+function getInput(loc: string, body?: ReadableStream): Promise<Seg> {
     return new Promise((res) => {
         const data: Seg = { data: [], nested: {} };
 
-        d3.csv(loc, async (_data: any) => {
+        const reqInit = body == undefined ? {} : {method: "POST", body};
+
+        d3.csv(loc, reqInit, async (_data: any) => {
             const row = conversor(_data);
             let current = data;
             for (let f of row.from) {
@@ -44,11 +73,18 @@ function getInput(loc: string): Promise<Seg> {
 }
 
 const timePerDay = 1000 * 60 * 60 * 24;
-function monthDiff(d2: Date, d1: Date, perDays = 14) {
+function monthDiff(d2: Date, d1: Date, perDays = 14): number {
     const diffTime = d2.getTime() - d1.getTime();
     const diffDays = Math.floor(diffTime / (timePerDay * perDays));
     return diffDays;
 }
+
+function addDays(date: Date, days: number): Date {
+    const result = new Date(date);
+    result.setDate(result.getDate() + days);
+    return result;
+}
+
 
 var margin = { top: 10, right: 60, bottom: 30, left: 60 },
     width = 1200 - margin.left - margin.right,
@@ -115,7 +151,7 @@ function drawAndGetScales(svg: SVG, stats: [string, [number, number][]][], daysP
         .append("g")
         .attr("transform", `translate(0, ${height})`)
         .call(d3.axisBottom(x).ticks(10).tickFormat(d => {
-            const date = new Date(startDate.getTime() + d.valueOf() * daysPerSample * timePerDay);
+            const date = new Date(startDate.getTime() + d.valueOf() * timePerDay);
             return date.toLocaleDateString("nl-BE");
         }));
 
@@ -163,37 +199,81 @@ function drawLines(svg: SVG, stats: [string, [number, number][]][], x: Scale, y:
         .attr("d", d => d3.line().x(d => x(d[0])).y(d => y(d[1]))(d[1]))
 }
 
-export async function setupGraphs(location: string, svgContainerId: string, helpId: string, parentId: string) {
-    const data = await getInput(location);
+function getStartAndEndDate(data: [string, Row][]) {
+    const sumstat = d3.group(data, (x) => x[0])
+
+    const endDate = Math.max(...Array.from(sumstat.values()).flat().map(x => x[1].date.getTime()));
+    const startDate = Math.min(...Array.from(sumstat.values()).flat().map(x => x[1].date.getTime()));
+    return [startDate, endDate];
+}
+
+let currentStartDate = 0;
+let currentEndDate = 0;
+export async function setupGraphs(location: string, svgContainerId: string, helpId: string, parentId: string, startDateId: string, endDateId: string, body?: ReadableStream) {
+    const data = await getInput(location, body);
     const svg = getSvg(svgContainerId);
     const help = d3.select(helpId);
     const parentButton = d3.select(parentId);
 
-    const samplePerDayField = <HTMLInputElement> document.getElementById("samplesPerDay");
+    const samplePerDayField = <HTMLInputElement>document.getElementById("samplesPerDay");
     let daysPerSample = parseInt(samplePerDayField.value);
     samplePerDayField.addEventListener("change", d => {
         const target = d.target as HTMLInputElement;
         daysPerSample = parseInt(target.value);
-        update(current.data);
+        update(current.data, new Date(currentStartDate), currentEndDate);
     });
 
-    function update(data: [string, Row][]) {
-        svg.selectAll("*").remove();
-        const sumstat = d3.group(data, (x) => x[0])
+    // console.log(startDateId, endDateId);
+    // const startDateSlider = <HTMLInputElement>document.getElementById(startDateId);
+    // startDateSlider.addEventListener("change", e => {
+    //     currentStartDate = parseInt((<HTMLInputElement>e.target).value);
+    //     update(current.data, new Date(currentStartDate), currentEndDate);
+    // });
+    // const endDateSlider = <HTMLInputElement>document.getElementById(endDateId);
+    // endDateSlider.addEventListener("change", e => {
+    //     currentEndDate = parseInt((<HTMLInputElement>e.target).value);
+    //     update(current.data, new Date(currentStartDate), currentEndDate);
+    // });
 
-        const maxDate = Math.max(...Array.from(sumstat.values()).flat().map(x => x[1].date.getTime()));
-        const startDate = new Date(Math.min(...Array.from(sumstat.values()).flat().map(x => x[1].date.getTime())));
-        const dateDelta = Math.ceil((maxDate - startDate.getTime()) / timePerDay / daysPerSample);
+    const [ultimateStartDate, ultimateEndDate] = getStartAndEndDate(data.data);
+
+    currentStartDate =  ultimateStartDate;
+    currentEndDate = ultimateEndDate;
+
+    // startDateSlider.min = "" + currentStartDate;
+    // startDateSlider.max = "" + currentEndDate;
+    // endDateSlider.min = "" + currentStartDate;
+    // endDateSlider.max = "" + currentEndDate;
+
+    // startDateSlider.value = "" + currentStartDate;
+    // endDateSlider.value = "" + currentEndDate;
+
+    function update(data: [string, Row][], startDate: Date, endDate: number) {
+        const sumstat = d3.group(data, (x) => x[0])
+        svg.selectAll("*").remove();
+
+        // const endDate = Math.max(...Array.from(sumstat.values()).flat().map(x => x[1].date.getTime()));
+        // const startDate = new Date(Math.min(...Array.from(sumstat.values()).flat().map(x => x[1].date.getTime())));
+        const dayCount = Math.ceil((endDate - startDate.getTime()) / timePerDay);
+
+
         const stats: [string, [number, number][]][] = Array.from(sumstat.entries()).map(x => {
-            const perMonth = d3.rollup(x[1], v => d3.sum(v, d => d[1].amount), d => monthDiff(d[1].date, startDate, daysPerSample));
-            console.log(perMonth)
-            for (let i = 0; i < dateDelta; i++) {
-                perMonth.set(i, perMonth.get(i) || 0)//[i] = perMonth[i]
-            }
+            const sumBuffer = new Array(dayCount + 1).map(() => 0);
+            const perMonth = d3.rollup(x[1], v => d3.sum(v, d => d[1].amount), d => monthDiff(d[1].date, startDate, 1));
+
+            for (let i = 0; i < dayCount; i++)
+                sumBuffer[i] = (sumBuffer[i - 1] || 0) + (perMonth.get(i) || 0) - (perMonth.get(i - daysPerSample) || 0);
+
+
+            for (let i = 0; i < dayCount; i++)
+                perMonth.set(i, sumBuffer[i]);
 
             const foo = Array.from(perMonth.entries()).sort((a, b) => d3.ascending(a[0], b[0]));
 
-            return [x[0], foo]
+            const startIndex = Math.floor((startDate.getTime() - ultimateStartDate) / timePerDay);
+            const endIndex = Math.floor((endDate- ultimateStartDate) / timePerDay);
+
+            return [x[0], foo.slice(startIndex, endIndex)]
         });
 
         const [x, y] = drawAndGetScales(svg, stats, daysPerSample, startDate);
@@ -315,17 +395,17 @@ export async function setupGraphs(location: string, svgContainerId: string, help
     function next(target: string) {
         if (!target) return;
         current = current.nested[target];
-        update(current.data);
+        update(current.data, new Date(currentStartDate), currentEndDate);
     }
 
     function parent() {
         if (current.parent) {
             current = current.parent;
-            update(current.data);
+            update(current.data, new Date(currentStartDate), currentEndDate);
         }
     }
 
     parentButton.on("click", parent);
 
-    update(data.data);
+    update(data.data, new Date(currentStartDate), currentEndDate);
 }
