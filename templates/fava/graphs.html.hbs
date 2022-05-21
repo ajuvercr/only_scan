@@ -30,7 +30,9 @@
 
 <script type="module">
     import { setupGraphs } from "/static/dist/bundle.js";
-    // setupGraphs("/fava/graphs/input.csv", "#my_dataviz", "#my_help", "#go_parent")
+    {{#if logged_in}}
+     setupGraphs("/fava/graphs/input.csv", "#my_dataviz", "#my_help", "#go_parent")
+     {{/if}}
 
     function yeet() {
         const file = document.getElementById("fileInput").files[0];

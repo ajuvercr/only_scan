@@ -5,7 +5,6 @@ use crate::{context::Context, fava::ScanConfigConfig, oauth::AuthUser, util::rea
 
 #[get("/")]
 fn index(context: Context, user: AuthUser) -> Result<Template, Redirect> {
-    unwrap!(user);
     Ok(Template::render("fava/graphs", context.value()))
 }
 
