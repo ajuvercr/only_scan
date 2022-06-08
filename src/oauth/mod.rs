@@ -78,6 +78,11 @@ async fn callback<'r>(
         serde_json::to_string(&resp.info).ok()?,
     ));
 
+    jar.add(Cookie::new(
+        user::TOKEN_COOKIE_NAME,
+        serde_json::to_string(&resp.access_token).ok()?,
+    ));
+
     let url = data
         .state
         .as_ref()
@@ -114,7 +119,7 @@ pub fn login(from: Option<&str>, config: &State<util::Config>, host: HostHeader<
 #[get("/logout")]
 fn logout(cookies: &CookieJar) -> Redirect {
     cookies.remove(Cookie::named(user::COOKIE_NAME));
-    // cookies.remove(Cookie::named());
+    cookies.remove(Cookie::named(user::TOKEN_COOKIE_NAME));
     Redirect::to("/")
 }
 

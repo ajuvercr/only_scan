@@ -82,6 +82,7 @@ macro_rules! unwrap {
 
 pub type AuthUser = Result<User, Redirect>;
 pub const COOKIE_NAME: &'static str = "scan_session";
+pub const TOKEN_COOKIE_NAME: &'static str = "scan_key";
 
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for AuthUser {
