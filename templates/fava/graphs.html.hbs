@@ -14,24 +14,37 @@
             <input type="file" id="fileInput">
             <button class="button" onclick="yeet()">Yeet!</button>
         </p>
+
+        <div class="columns"> 
+            <div class="column">
+                <p>Start date:</p>
+                <input type="range" min="1" max="100" value="1" class="slider is-fullwidth" id="startDate">
+            </div>
+            <div class="column">
+                <p>End date:</p>
+                <input type="range" min="1" max="100" value="100" class="slider is-fullwidth" id="endDate">
+            </div>
+        </div>
     </div>
+
+
 
     <div class="m-4 ">
         <p class="level-left gap">
-            Days per point <input type="number" value=14 id="samplesPerDay">
+            Days per point <input type="number" value=14 id="spd">
             <button class="button" id="go_parent">parent</button>
         </p>
     </div>
 
+
     <p id="my_help"></p>
     <div id="my_dataviz"></div>
-
 </div>
 
 <script type="module">
     import { setupGraphs } from "/static/dist/bundle.js";
     {{#if logged_in}}
-     setupGraphs("/fava/graphs/input.csv", "#my_dataviz", "#my_help", "#go_parent")
+     setupGraphs("/fava/graphs/input.csv", "#my_dataviz", "#my_help", "#go_parent", "spd", "startDate", "endDate")
      {{/if}}
 
     function yeet() {

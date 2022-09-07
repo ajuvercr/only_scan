@@ -36,6 +36,7 @@ $family-secondary: futura;
 @import "./slate/_variables.sass";
 
 @import "../node_modules/bulma/bulma.sass";
+@import "./slider.sass";
 
 .navbar > .container .navbar-menu,
 .container > .navbar .navbar-menu {

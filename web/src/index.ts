@@ -199,18 +199,19 @@ function getStartAndEndDate(data: [string, Row][]) {
 
 let currentStartDate = 0;
 let currentEndDate = 0;
-export async function setupGraphs(location: string, svgContainerId: string, helpId: string, parentId: string, startDateId: string, endDateId: string, body?: ReadableStream) {
+export async function setupGraphs(location: string, svgContainerId: string, helpId: string, parentId: string, samplesPerDayId: string, startDateId: string, endDateId: string, body?: ReadableStream) {
     const data = await getInput(location, body);
     const svg = getSvg(svgContainerId);
     const help = d3.select(helpId);
     const parentButton = d3.select(parentId);
 
-    const samplePerDayField = <HTMLInputElement>document.getElementById("samplesPerDay");
+    const samplePerDayField = <HTMLInputElement>document.getElementById(samplesPerDayId);
 
     let daysPerSample = parseInt(samplePerDayField.value);
-    samplePerDayField.addEventListener("change", d => {
+    samplePerDayField.addEventListener("input", d => {
         const target = d.target as HTMLInputElement;
         daysPerSample = parseInt(target.value);
+            updateLocalStat(current.data);
         update(new Date(currentStartDate), currentEndDate);
     });
 
@@ -239,8 +240,8 @@ export async function setupGraphs(location: string, svgContainerId: string, help
             update(start, end.getTime());
         };
 
-        startDateSlider.addEventListener("change", updateThings);
-        endDateSlider.addEventListener("change", updateThings);
+        startDateSlider.addEventListener("input", updateThings);
+        endDateSlider.addEventListener("input", updateThings);
 
         startDateSlider.min = "" + 0;
         startDateSlider.max = "" + 100;
