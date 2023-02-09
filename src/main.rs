@@ -1,16 +1,17 @@
 #![recursion_limit = "256"]
 #![feature(try_trait_v2)]
-#![feature(const_fn_trait_bound)]
 #[macro_use]
 extern crate rocket;
 #[macro_use]
 extern crate lazy_static;
 extern crate base64;
 extern crate chrono;
-#[macro_use]
+
 extern crate crud_helper;
+#[cfg(feature = "db")]
 #[macro_use]
 extern crate diesel;
+
 extern crate cool_id_generator;
 extern crate rand;
 extern crate regex;
@@ -27,7 +28,6 @@ mod debug;
 mod fava;
 mod pages;
 pub mod repository;
-mod serve;
 pub mod sorted_list;
 pub mod util;
 
@@ -37,17 +37,12 @@ mod tests;
 use std::collections::HashMap;
 
 use context::Context;
-use r2d2_diesel::ConnectionManager;
 use rocket::{
     fairing::AdHoc,
-    http::Status,
-    request::{self, FromRequest, Outcome},
-    routes, Request, Route, State,
+    fs::{FileServer, Options},
+    routes, Route,
 };
 use rocket_dyn_templates::{handlebars::handlebars_helper, Template};
-
-pub type Conn = diesel::PgConnection;
-pub type Pool = r2d2::Pool<ConnectionManager<Conn>>;
 
 #[get("/")]
 async fn index(context: Context) -> Template {
@@ -87,64 +82,37 @@ handlebars_helper!(image: |name: Json| {
     }
 });
 
-pub fn init_pool(config: &util::Config) -> Pool {
-    let manager = ConnectionManager::new(&config.database_url);
-    Pool::new(manager).expect("db pool failed")
-}
-
-pub struct DbConn(pub r2d2::PooledConnection<ConnectionManager<Conn>>);
-
-impl std::ops::Deref for DbConn {
-    type Target = Conn;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for DbConn {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-#[rocket::async_trait]
-impl<'r> FromRequest<'r> for DbConn {
-    type Error = ();
-
-    async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
-        let pool: &State<Pool> = req.guard().await.unwrap();
-        match pool.get() {
-            Ok(conn) => Outcome::Success(DbConn(conn)),
-            Err(_) => Outcome::Failure((Status::ServiceUnavailable, ())),
-        }
-    }
-}
-
 #[launch]
 fn rocket() -> _ {
-    let statics: Vec<Route> = serve::StaticFiles::new("static", serve::Options::DotFiles).into();
+    let statics: Vec<Route> = FileServer::new("static", Options::DotFiles).into();
     let rocket = rocket::build();
-    let config: util::Config = rocket.figment().extract().expect("config");
 
     let rocket = rocket
         .mount("/", routes![index])
         .mount("/static", statics)
-        .attach(AdHoc::config::<util::Config>())
-        .manage(init_pool(&config));
+        .attach(AdHoc::config::<util::Config>());
+
+    #[cfg(feature = "db")]
+    let rocket = {
+        let config: util::Config = rocket.figment().extract().expect("config");
+        let rocket = rocket.manage(repository::db_repo::init_pool(&config));
+        pages::scrum::fuel(rocket)
+    };
+
     let rocket = pages::desk::fuel(rocket);
-    let rocket = pages::scrum::fuel(rocket);
     let rocket = oauth::fuel(rocket);
     let rocket = fava::fuel(rocket);
     // This also adds the handlebars fairing
 
-    rocket.attach(Template::custom(|engines| {
-        let handles = &mut engines.handlebars;
-        handles.register_helper("eq", Box::new(eq));
-        handles.register_helper("shorten_cat", Box::new(shorten_cat));
-        handles.register_helper("color_cat", Box::new(color_cat));
-        handles.register_helper("euro", Box::new(into_euro));
-        handles.register_helper("lower", Box::new(lower));
-        handles.register_helper("image", Box::new(image));
-    }))
-    //        .attach(debug::Debug)
+    rocket
+        .attach(Template::custom(|engines| {
+            let handles = &mut engines.handlebars;
+            handles.register_helper("eq", Box::new(eq));
+            handles.register_helper("shorten_cat", Box::new(shorten_cat));
+            handles.register_helper("color_cat", Box::new(color_cat));
+            handles.register_helper("euro", Box::new(into_euro));
+            handles.register_helper("lower", Box::new(lower));
+            handles.register_helper("image", Box::new(image));
+        }))
+        .attach(debug::Debug)
 }

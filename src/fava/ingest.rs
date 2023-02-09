@@ -3,6 +3,7 @@ use rocket::{fairing::AdHoc, response::Redirect, routes, Build, Rocket, State};
 use rocket_dyn_templates::Template;
 
 use crate::fava::ScanConfigConfig;
+use crate::util;
 use crate::{context::Context, oauth::AuthUser};
 use rocket::serde::json::serde_json::json;
 use rocket::serde::{Deserialize, Serialize};
@@ -40,6 +41,24 @@ macro_rules! get_foo {
     (state $state:expr) => {
         get_mutexed($state)
     };
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+struct FavaAccount {
+    short: String,
+    name: String,
+    children: Vec<FavaAccount>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+struct FavaAccounts {
+    accounts: Vec<FavaAccount>,
+}
+
+impl FavaAccounts {
+    pub fn init(config: &util::Config) -> Self {
+        todo!()
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -308,12 +327,22 @@ fn delete_one(scan_id: &str, item_id: &str, scans: &State<Scans>, user: AuthUser
 }
 
 pub fn fuel(rocket: Rocket<Build>) -> Rocket<Build> {
+    let config: ScanConfigConfig = rocket.figment().extract().expect("config");
     rocket
         .mount(
             "/fava/ingest",
             routes![get, new_post, get_scan, post_scan, get_one, post_one, delete_one],
         )
         .attach(AdHoc::config::<ScanConfigConfig>())
+        .attach(AdHoc::try_on_ignite("beans", |rocket| {
+            Box::pin(async move {
+                if let Some(config) = rocket.state::<ScanConfigConfig>() {
+                    Ok(rocket)
+                } else {
+                    Err(rocket)
+                }
+            })
+        }))
         .attach(Repository::<Vec<Scan>>::adhoc(
             "scans config",
             |c: &ScanConfigConfig| c.scan_config_location.to_string(),

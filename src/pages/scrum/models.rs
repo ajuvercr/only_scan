@@ -1,3 +1,5 @@
+use crud_helper::{Builder, New};
+use diesel::{table, AsChangeset, Insertable, Queryable};
 use rocket::serde::{Deserialize, Serialize};
 
 table! {

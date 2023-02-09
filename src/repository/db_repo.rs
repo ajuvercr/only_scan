@@ -1,7 +1,12 @@
 use std::marker::PhantomData;
 
-use crate::Conn;
 use diesel::prelude::*;
+use r2d2_diesel::ConnectionManager;
+use rocket::{
+    http::Status,
+    request::{self, FromRequest, Outcome},
+    Request, State,
+};
 
 use diesel::helper_types::{Find, Limit};
 
@@ -9,6 +14,12 @@ use diesel::associations::HasTable;
 
 use diesel::query_builder::*;
 use diesel::query_dsl::methods::*;
+
+use crate::util;
+
+pub type Conn = diesel::PgConnection;
+pub type Pool = r2d2::Pool<ConnectionManager<Conn>>;
+
 pub struct Repo<U, Table> {
     pub table: Table,
     pub pd: PhantomData<U>,
@@ -140,5 +151,38 @@ mod tests {
         assert!(all.is_ok());
         let l2 = all.unwrap().len();
         assert_eq!(l2, l + 1);
+    }
+}
+
+pub fn init_pool(config: &util::Config) -> Pool {
+    let manager = ConnectionManager::new(&config.database_url);
+    Pool::new(manager).expect("db pool failed")
+}
+
+pub struct DbConn(pub r2d2::PooledConnection<ConnectionManager<Conn>>);
+
+impl std::ops::Deref for DbConn {
+    type Target = Conn;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for DbConn {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for DbConn {
+    type Error = ();
+
+    async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
+        let pool: &State<Pool> = req.guard().await.unwrap();
+        match pool.get() {
+            Ok(conn) => Outcome::Success(DbConn(conn)),
+            Err(_) => Outcome::Failure((Status::ServiceUnavailable, ())),
+        }
     }
 }

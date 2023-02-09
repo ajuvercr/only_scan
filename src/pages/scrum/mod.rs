@@ -11,8 +11,8 @@ use rocket_dyn_templates::Template;
 use crate::context::Context;
 use crate::oauth::AuthUser;
 use crate::repository::db_repo::Repo as DbRepo;
+use crate::repository::db_repo::{Conn, DbConn};
 use crate::repository::Repository as Repo;
-use crate::{Conn, DbConn};
 pub mod models;
 use models::{Task, TaskBuilder, TaskNew};
 
