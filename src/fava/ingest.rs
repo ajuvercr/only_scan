@@ -3,7 +3,6 @@ use rocket::{fairing::AdHoc, response::Redirect, routes, Build, Rocket, State};
 use rocket_dyn_templates::Template;
 
 use crate::fava::ScanConfigConfig;
-use crate::util;
 use crate::{context::Context, oauth::AuthUser};
 use rocket::serde::json::serde_json::json;
 use rocket::serde::{Deserialize, Serialize};
@@ -49,6 +48,12 @@ struct FavaAccount {
     name: String,
     children: Vec<FavaAccount>,
 }
+impl FavaAccount {
+    fn sort(&mut self) {
+        self.children.sort_by(|a, b| a.short.cmp(&b.short));
+        self.children.iter_mut().for_each(FavaAccount::sort);
+    }
+}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 struct FavaAccounts {
@@ -56,8 +61,62 @@ struct FavaAccounts {
 }
 
 impl FavaAccounts {
-    pub fn init(config: &util::Config) -> Self {
-        todo!()
+    fn add_account(accounts: &mut FavaAccount, line: &str) -> Option<()> {
+        let mut words = line.split(" ");
+        words.next(); // Date
+        let action = words.next()?;
+        if action != "open" {
+            return None;
+        }
+
+        let parts = words.next()?.split(":");
+        let mut first = true;
+        let mut current_total = "".to_string();
+
+        parts.fold(accounts, |acc, part| {
+            if !first {
+                current_total += ":";
+            } else {
+                first = false;
+            }
+
+            current_total += part;
+
+            if let Some(idx) = acc.children.iter().position(|x| x.short == part) {
+                &mut acc.children[idx]
+            } else {
+                let n = FavaAccount {
+                    short: part.to_string(),
+                    name: current_total.clone(),
+                    children: Vec::new(),
+                };
+                acc.children.push(n);
+                acc.children.last_mut().unwrap()
+            }
+        });
+
+        Some(())
+    }
+
+    pub async fn init(config: &ScanConfigConfig) -> Self {
+        let bean_file =
+            fs::read_to_string(&config.beancount_location).expect("No beancount file found!");
+
+        let mut root = FavaAccount {
+            short: "".into(),
+            name: "".into(),
+            children: Vec::new(),
+        };
+
+        for line in bean_file.lines() {
+            FavaAccounts::add_account(&mut root, line);
+        }
+
+        root.sort();
+
+        Self {
+            accounts: root.children,
+        }
     }
 }
 
@@ -258,6 +317,7 @@ fn get_one(
     scan_id: &str,
     item_id: &str,
     scans: &State<Scans>,
+    accounts: &State<FavaAccounts>,
     beans: &State<Repository<Beans>>,
     mut context: Context,
     user: AuthUser,
@@ -275,7 +335,8 @@ fn get_one(
             let items = json!({
                 "errors": [],
                 "item": item,
-                "categories_left": beans.categories
+                "categories_left": beans.categories,
+                "accounts": accounts.accounts,
             });
 
             context.merge(items);
@@ -327,7 +388,6 @@ fn delete_one(scan_id: &str, item_id: &str, scans: &State<Scans>, user: AuthUser
 }
 
 pub fn fuel(rocket: Rocket<Build>) -> Rocket<Build> {
-    let config: ScanConfigConfig = rocket.figment().extract().expect("config");
     rocket
         .mount(
             "/fava/ingest",
@@ -337,7 +397,8 @@ pub fn fuel(rocket: Rocket<Build>) -> Rocket<Build> {
         .attach(AdHoc::try_on_ignite("beans", |rocket| {
             Box::pin(async move {
                 if let Some(config) = rocket.state::<ScanConfigConfig>() {
-                    Ok(rocket)
+                    let accounts = FavaAccounts::init(&config).await;
+                    Ok(rocket.manage(accounts))
                 } else {
                     Err(rocket)
                 }

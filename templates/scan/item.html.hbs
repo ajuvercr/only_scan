@@ -41,6 +41,12 @@
         </div>
     </div>
 
+    <div class="columns block is-variable is-multiline is-centered">
+        {{#each accounts}}
+        {{> scan/account}}
+        {{/each}}
+    </div>
+
     <div class="columns block is-variable is-multiline is-centered has-text-black">
         {{#each categories_left}}
         <div class="column is-one-quarter has-text-weight-bold is-family-monospace" onclick='submit("{{this.1}}")'>
@@ -57,6 +63,13 @@
 {{/inline}}
 
 {{> base}}
+
+<style>
+.account:hover {
+    background-color: rgba(0, 96, 223, 0.1);
+}
+
+</style>
 
 <script>
     var form = document.getElementById("form");
