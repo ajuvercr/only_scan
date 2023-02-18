@@ -1,12 +1,8 @@
 
-<div class="account">
-  <div class="is-clickable" onclick='submit("{{name}}")'>
-    <p>{{short}} ({{name}})</p>
+  <div class="is-clickable column" onclick='submit("{{name}}")'>
+   {{name}}
   </div>
   
-  <div class="ml-4">
-    {{#each children}}
-    {{> scan/account}}
-    {{/each}}
-  </div>
-</div>
+  {{#each children}}
+  {{> scan/account}}
+  {{/each}}

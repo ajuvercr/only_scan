@@ -41,18 +41,9 @@
         </div>
     </div>
 
-    <div class="columns block is-variable is-multiline is-centered">
+    <div class="beancount-accounts">
         {{#each accounts}}
         {{> scan/account}}
-        {{/each}}
-    </div>
-
-    <div class="columns block is-variable is-multiline is-centered has-text-black">
-        {{#each categories_left}}
-        <div class="column is-one-quarter has-text-weight-bold is-family-monospace" onclick='submit("{{this.1}}")'>
-            <div class="notification has-text-centered" style="background-color: {{color_cat this.1}}">{{shorten_cat
-                this.1}}</div>
-        </div>
         {{/each}}
     </div>
 
@@ -68,6 +59,13 @@
 .account:hover {
     background-color: rgba(0, 96, 223, 0.1);
 }
+
+.beancount-accounts {
+    font-size: 1.1em;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr) ) ;
+}
+
 
 </style>
 
