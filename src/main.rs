@@ -101,7 +101,7 @@ async fn main() -> Result<(), rocket::Error> {
         }))
         .attach(debug::Debug);
 
-    let (service, rocket) = blog::fuel(rocket);
+    let (service, rocket) = blog::fuel(rocket, "./blogs");
 
     let (service, rocket) = rocket::futures::join!(service.start(), rocket.launch());
     Ok(())

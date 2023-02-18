@@ -1,26 +1,40 @@
-use std::error::Error;
-use std::future::Future;
-use std::thread;
+use std::path::PathBuf;
 
+use pulldown_cmark::html;
+use pulldown_cmark::Options;
+use pulldown_cmark::Parser;
+use rocket::response::Redirect;
+use rocket::tokio::fs;
 use rocket::tokio::sync::mpsc;
 use rocket::tokio::sync::oneshot;
 use rocket::Build;
 use rocket::Rocket;
 use rocket::State;
+use rocket_dyn_templates::Template;
 use serde::Deserialize;
 
-pub struct HTML(pub String);
-
-#[derive(Debug)]
-struct OneShotSendError;
-
-impl std::fmt::Display for OneShotSendError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Failed to send to a oneshot channel")
-    }
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum RPCError {
+    #[error("failed to send rpc request")]
+    RequestSend,
+    #[error("failed to send rpc response")]
+    ResponseSend,
+    #[error("failed to receive rpc response")]
+    ResponseReceive,
 }
 
-impl Error for OneShotSendError {}
+pub struct HTML(pub String);
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum BlogError {
+    #[error("rpc error")]
+    Disconnect(#[from] RPCError),
+    #[error("Internal error.")]
+    Internal(String),
+    #[error("Not found.")]
+    NotFound,
+    #[error("IO error.")]
+    IO(std::io::ErrorKind),
+}
 
 pub struct RPC<A, R> {
     args: A,
@@ -34,19 +48,24 @@ impl<A, R> RPC<A, R> {
     }
 }
 
-pub trait Handler<A, R> {
-    fn handle(&mut self, args: A) -> R;
+use async_trait::async_trait;
 
-    fn handle_rpc(&mut self, args: RPC<A, R>) -> Result<(), Box<dyn Error + Send>> {
-        let res = self.handle(args.args);
+use crate::context::Context;
+
+#[async_trait]
+pub trait Handler<A: Send + 'static, R: Send + 'static> {
+    async fn handle(&mut self, args: A) -> R;
+
+    async fn handle_rpc(&mut self, args: RPC<A, R>) -> Result<(), BlogError> {
+        let res = self.handle(args.args).await;
         if args.tx.send(res).is_err() {
-            return Err(Box::new(OneShotSendError));
+            return Err(RPCError::ResponseSend.into());
         }
         Ok(())
     }
 }
 
-pub type BlogRequest = RPC<String, HTML>;
+pub type BlogRequest = RPC<String, Result<HTML, BlogError>>;
 
 #[derive(Deserialize)]
 pub struct FrontMatter {
@@ -61,48 +80,84 @@ pub struct BlogServiceClient {
 }
 
 impl BlogServiceClient {
-    pub async fn get(&self, path: &str) -> Result<HTML, OneShotSendError> {
+    pub async fn get(&self, path: &str) -> Result<HTML, BlogError> {
         let (rpc, rx) = BlogRequest::new(path.to_string());
-        self.tx.send(rpc).await.map_err(|_| OneShotSendError)?;
-        rx.await.map_err(|_| OneShotSendError)
+        self.tx.send(rpc).await.map_err(|_| RPCError::RequestSend)?;
+        rx.await.map_err(|_| RPCError::ResponseReceive)?
     }
 }
 
 pub struct BlogService {
+    base: PathBuf,
     blog_request: mpsc::Receiver<BlogRequest>,
 }
+#[async_trait]
+impl Handler<String, Result<HTML, BlogError>> for BlogService {
+    async fn handle(&mut self, args: String) -> Result<HTML, BlogError> {
+        let path = self.base.join(args);
 
-impl Handler<String, HTML> for BlogService {
-    fn handle(&mut self, args: String) -> HTML {
-        HTML(args)
+        if !path.exists() || !path.is_file() {
+            return Err(BlogError::NotFound);
+        }
+
+        let contents = fs::read_to_string(path)
+            .await
+            .map_err(|e| BlogError::IO(e.kind()))?;
+
+        let mut options = Options::empty();
+        options.insert(Options::ENABLE_STRIKETHROUGH);
+        let parser = Parser::new_ext(&contents, options);
+
+        let mut html_output = String::new();
+        html::push_html(&mut html_output, parser);
+
+        Ok(HTML(html_output))
     }
 }
 
 impl BlogService {
-    pub fn new() -> (Self, BlogServiceClient) {
+    pub fn new(base: &str) -> (Self, BlogServiceClient) {
         let (tx, rx) = mpsc::channel(10);
-        (Self { blog_request: rx }, BlogServiceClient { tx })
+        (
+            Self {
+                blog_request: rx,
+                base: base.into(),
+            },
+            BlogServiceClient { tx },
+        )
     }
 
-    pub async fn start(mut self) -> Result<(), Box<dyn Error + Send>> {
+    pub async fn start(mut self) -> Result<(), BlogError> {
         while let Some(x) = self.blog_request.recv().await {
-            self.handle_rpc(x)?;
+            self.handle_rpc(x).await?;
         }
 
         Ok(())
     }
 }
 
-#[get("/<uuid>")]
-async fn get_blog(uuid: &str, service: &State<BlogServiceClient>) -> Result<String, &'static str> {
-    let file = service.get(uuid).await.map_err(|_| "Failed")?;
-    Ok(file.0)
+#[get("/")]
+async fn get_blogs(service: &State<BlogServiceClient>) -> Option<Template> {
+    None
 }
 
-pub fn fuel(rocket: Rocket<Build>) -> (BlogService, Rocket<Build>) {
-    let (service, client) = BlogService::new();
+#[get("/<uuid>")]
+async fn get_blog(
+    mut ctx: Context,
+    uuid: &str,
+    service: &State<BlogServiceClient>,
+) -> Result<Template, Redirect> {
+    let html = service.get(uuid).await.map_err(|_| Redirect::to("/blog"))?;
+    ctx.add("content", html.0);
+    Ok(Template::render("blog/blog", &ctx.value()))
+}
+
+pub fn fuel(rocket: Rocket<Build>, base: &str) -> (BlogService, Rocket<Build>) {
+    let (service, client) = BlogService::new(base);
     (
         service,
-        rocket.mount("/blog", routes!(get_blog)).manage(client),
+        rocket
+            .mount("/blog", routes!(get_blogs, get_blog))
+            .manage(client),
     )
 }
