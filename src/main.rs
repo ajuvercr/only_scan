@@ -24,10 +24,8 @@ pub mod oauth;
 mod pages;
 #[macro_use]
 pub mod repository;
+pub mod blog;
 pub mod util;
-
-#[cfg(test)]
-mod tests;
 
 use std::collections::HashMap;
 
@@ -35,7 +33,7 @@ use context::Context;
 use rocket::{
     fairing::AdHoc,
     fs::{FileServer, Options},
-    routes, Route,
+    routes, Build, Rocket, Route,
 };
 use rocket_dyn_templates::{handlebars::handlebars_helper, Template};
 
@@ -77,8 +75,8 @@ handlebars_helper!(image: |name: Json| {
     }
 });
 
-#[launch]
-fn rocket() -> _ {
+#[rocket::main]
+async fn main() -> Result<(), rocket::Error> {
     let statics: Vec<Route> = FileServer::new("static", Options::DotFiles).into();
     let rocket = rocket::build();
 
@@ -91,7 +89,7 @@ fn rocket() -> _ {
     let rocket = oauth::fuel(rocket);
     let rocket = fava::fuel(rocket);
 
-    rocket
+    let rocket = rocket
         .attach(Template::custom(|engines| {
             let handles = &mut engines.handlebars;
             handles.register_helper("eq", Box::new(eq));
@@ -101,5 +99,10 @@ fn rocket() -> _ {
             handles.register_helper("lower", Box::new(lower));
             handles.register_helper("image", Box::new(image));
         }))
-        .attach(debug::Debug)
+        .attach(debug::Debug);
+
+    let (service, rocket) = blog::fuel(rocket);
+
+    let (service, rocket) = rocket::futures::join!(service.start(), rocket.launch());
+    Ok(())
 }
