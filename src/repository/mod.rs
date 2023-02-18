@@ -2,12 +2,9 @@ use std::ops::DerefMut;
 use std::sync::{Arc, Mutex};
 
 use rocket::fairing::AdHoc;
-use rocket::serde::json::serde_json::{self};
+use rocket::serde::json::serde_json;
 use rocket::serde::{Deserialize, Serialize};
 use std::fs;
-
-#[cfg(feature = "db")]
-pub mod db_repo;
 
 use crate::util::*;
 

@@ -43,11 +43,10 @@
 
     <div class="beancount-accounts">
         {{#each accounts}}
-        {{> scan/account}}
+          <div class="is-clickable column account" onclick='submit("{{this}}")'>
+                {{this}}
+          </div>
         {{/each}}
-    </div>
-
-    <div class="bottom fields">
     </div>
 </form>
 

@@ -7,11 +7,6 @@ extern crate lazy_static;
 extern crate base64;
 extern crate chrono;
 
-extern crate crud_helper;
-#[cfg(feature = "db")]
-#[macro_use]
-extern crate diesel;
-
 extern crate cool_id_generator;
 extern crate rand;
 extern crate regex;
@@ -21,14 +16,14 @@ extern crate uuid;
 
 extern crate feignhttp;
 
-#[macro_use]
-pub mod oauth;
 mod context;
 mod debug;
 mod fava;
+#[macro_use]
+pub mod oauth;
 mod pages;
+#[macro_use]
 pub mod repository;
-pub mod sorted_list;
 pub mod util;
 
 #[cfg(test)]
@@ -92,17 +87,9 @@ fn rocket() -> _ {
         .mount("/static", statics)
         .attach(AdHoc::config::<util::Config>());
 
-    #[cfg(feature = "db")]
-    let rocket = {
-        let config: util::Config = rocket.figment().extract().expect("config");
-        let rocket = rocket.manage(repository::db_repo::init_pool(&config));
-        pages::scrum::fuel(rocket)
-    };
-
     let rocket = pages::desk::fuel(rocket);
     let rocket = oauth::fuel(rocket);
     let rocket = fava::fuel(rocket);
-    // This also adds the handlebars fairing
 
     rocket
         .attach(Template::custom(|engines| {

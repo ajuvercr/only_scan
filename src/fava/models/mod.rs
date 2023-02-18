@@ -198,29 +198,6 @@ impl Scan {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct ScanItem {
-    pub id: String,
-    pub name: String,
-    pub price: usize,
-    pub category: Option<String>,
-}
-
-impl ScanItem {
-    pub fn new<S: Into<String>>(name: S, price: usize) -> Self {
-        Self {
-            id: uuid::Uuid::new_v4().to_string(),
-            name: name.into(),
-            price,
-            category: None,
-        }
-    }
-
-    pub fn needs_categorised(&self) -> bool {
-        self.category.is_none()
-    }
-}
-
 pub struct ScanOutput<'r, 'a> {
     date: &'a NaiveDate,
     name: String,

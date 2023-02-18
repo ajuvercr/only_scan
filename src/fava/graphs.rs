@@ -4,13 +4,13 @@ use rocket_dyn_templates::Template;
 use crate::{context::Context, fava::ScanConfigConfig, oauth::AuthUser, util::read_command};
 
 #[get("/")]
-fn index(context: Context, user: AuthUser) -> Result<Template, Redirect> {
+fn index(context: Context) -> Result<Template, Redirect> {
     Ok(Template::render("fava/graphs", context.value()))
 }
 
 #[get("/input.csv")]
 fn input(user: AuthUser, config: &State<ScanConfigConfig>) -> Result<String, Redirect> {
-    unwrap!(user);
+    user.check()?;
 
     let location = &config.beancount_location;
 

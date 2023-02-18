@@ -43,25 +43,13 @@ macro_rules! get_foo {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-struct FavaAccount {
-    short: String,
-    name: String,
-    children: Vec<FavaAccount>,
-}
-impl FavaAccount {
-    fn sort(&mut self) {
-        self.children.sort_by(|a, b| a.short.cmp(&b.short));
-        self.children.iter_mut().for_each(FavaAccount::sort);
-    }
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
 struct FavaAccounts {
-    accounts: Vec<FavaAccount>,
+    accounts: Vec<String>,
+    pay_options: Vec<String>,
 }
 
 impl FavaAccounts {
-    fn add_account(accounts: &mut FavaAccount, line: &str) -> Option<()> {
+    fn parse_account_line(line: &str) -> Option<String> {
         let mut words = line.split(" ");
         words.next(); // Date
         let action = words.next()?;
@@ -69,83 +57,47 @@ impl FavaAccounts {
             return None;
         }
 
-        let parts = words.next()?.split(":");
-        let mut first = true;
-        let mut current_total = "".to_string();
+        words.next().map(String::from)
+    }
 
-        parts.fold(accounts, |acc, part| {
-            if !first {
-                current_total += ":";
-            } else {
-                first = false;
-            }
-
-            current_total += part;
-
-            if let Some(idx) = acc.children.iter().position(|x| x.short == part) {
-                &mut acc.children[idx]
-            } else {
-                let n = FavaAccount {
-                    short: part.to_string(),
-                    name: current_total.clone(),
-                    children: Vec::new(),
-                };
-                acc.children.push(n);
-                acc.children.last_mut().unwrap()
-            }
-        });
-
-        Some(())
+    fn parse_name_assets(x: &str) -> Option<&str> {
+        let mut words = x.split(" ");
+        let first = words.next()?;
+        let scd = words.next()?;
+        let third = words.next()?;
+        if (first, scd) == ("option", "\"name_assets\"") {
+            // Strip quotes
+            Some(&third[1..third.len() - 1])
+        } else {
+            None
+        }
     }
 
     pub async fn init(config: &ScanConfigConfig) -> Self {
         let bean_file =
             fs::read_to_string(&config.beancount_location).expect("No beancount file found!");
 
-        let mut root = FavaAccount {
-            short: "".into(),
-            name: "".into(),
-            children: Vec::new(),
-        };
+        let mut accounts: Vec<_> = bean_file
+            .lines()
+            .flat_map(FavaAccounts::parse_account_line)
+            .collect();
 
-        for line in bean_file.lines() {
-            FavaAccounts::add_account(&mut root, line);
-        }
+        let name_assets = bean_file
+            .lines()
+            .find_map(FavaAccounts::parse_name_assets)
+            .unwrap_or("Assets");
 
-        root.sort();
+        accounts.sort();
+        let pay_options: Vec<_> = accounts
+            .iter()
+            .filter(|x| x.starts_with(name_assets))
+            .cloned()
+            .collect();
 
         Self {
-            accounts: root.children,
+            accounts,
+            pay_options,
         }
-    }
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-struct Beans {
-    categories: Vec<(usize, String)>,
-    pay_options: Vec<(usize, String)>,
-}
-
-impl Beans {
-    fn inc_category(&mut self, category: &str) {
-        self.categories
-            .iter_mut()
-            .filter(|(_, f)| f == category)
-            .for_each(|(c, _)| {
-                *c += 1;
-            });
-        self.categories.sort_unstable_by(|a, b| b.cmp(a));
-    }
-
-    fn inc_pay(&mut self, pay_option: &str) {
-        self.pay_options
-            .iter_mut()
-            .filter(|(_, f)| f == pay_option)
-            .for_each(|(c, _)| {
-                *c += 1;
-            });
-
-        self.pay_options.sort_unstable_by(|a, b| b.cmp(a));
     }
 }
 
@@ -156,7 +108,7 @@ struct CategoriseForm<'r> {
 
 #[get("/")]
 fn get(scans: &State<Scans>, user: AuthUser, mut ctx: Context) -> Result<Template, Redirect> {
-    unwrap!(user);
+    user.check()?;
     scans.with(|scans| {
         let scans: Vec<_> = scans
             .iter()
@@ -173,7 +125,7 @@ fn get(scans: &State<Scans>, user: AuthUser, mut ctx: Context) -> Result<Templat
         "scans": scans,
 
         }));
-        Ok(Template::render("fava/ingest", &ctx.value()))
+        Ok(Template::render("fava/ingest/index", &ctx.value()))
     })
 }
 
@@ -183,7 +135,7 @@ async fn new_post(
     scans: &State<Scans>,
     user: AuthUser,
 ) -> Result<Option<Redirect>, Redirect> {
-    unwrap!(user);
+    user.check()?;
 
     let string = data
         .open(512u32.megabytes())
@@ -215,13 +167,13 @@ async fn new_post(
 
 #[get("/<uuid>")]
 fn get_scan(
+    mut context: Context,
     uuid: &str,
     scans: &State<Scans>,
-    beans: &State<Repository<Beans>>,
-    mut context: Context,
+    accounts: &State<FavaAccounts>,
     user: AuthUser,
 ) -> Option<Result<Template, Redirect>> {
-    unwrap!(user);
+    user.check().ok()?;
 
     scans.with(|state| {
         let scan = get_foo!(scan state, uuid);
@@ -233,37 +185,30 @@ fn get_scan(
             )))
             .into()
         } else {
-            beans.with(|beans| {
-                let options = beans.pay_options.iter().map(|(_, x)| x).collect::<Vec<_>>();
+            let per_category = scan.items.iter().flat_map(|x| x.category.as_ref()).fold(
+                std::collections::HashMap::new(),
+                |mut h, e| {
+                    if let Some(c) = h.get_mut(e) {
+                        *c += 1;
+                    } else {
+                        h.insert(e.clone(), 1);
+                    }
+                    h
+                },
+            );
 
-                let per_category = scan.items.iter().flat_map(|x| x.category.as_ref()).fold(
-                    std::collections::HashMap::new(),
-                    |mut h, e| {
-                        if let Some(c) = h.get_mut(e) {
-                            *c += 1;
-                        } else {
-                            h.insert(e.clone(), 1);
-                        }
-                        h
-                    },
-                );
+            let add = json! {{
+                "pay_options": accounts.pay_options,
+                "total": scan.items.len(),
+                "per_category": per_category,
+            }};
 
-                let add = json! {{
-                    "pay_options": options,
-                    "total": scan.items.len(),
-                    "per_category": per_category,
-                }};
+            context.merge(add);
 
-                context.merge(add);
-
-                Ok(Template::render("fava/ingest_last", context.value())).into()
-            })
+            Ok(Template::render("fava/ingest/last", context.value())).into()
         }
     })
 }
-
-// #[derive(FromForm, Debug, Clone)]
-// struct FinishScan;
 
 #[derive(FromForm, Debug, Clone)]
 struct Payment<'r> {
@@ -277,11 +222,10 @@ fn post_scan(
     scan_id: &str,
     user_input: Form<Payment<'_>>,
     scans: &State<Scans>,
-    beans: &State<Repository<Beans>>,
     config: &State<ScanConfigConfig>,
     user: AuthUser,
 ) -> Option<Redirect> {
-    if let Err(e) = user.r() {
+    if let Err(e) = user.check() {
         return Some(e);
     }
 
@@ -303,10 +247,6 @@ fn post_scan(
             writeln!(file, "\n{}", output).ok()?;
         }
 
-        beans.with_save(|beans| {
-            beans.inc_pay(user_input.pay);
-        });
-
         scans.remove(scan_index);
         Redirect::to("/fava/ingest").into()
     })
@@ -318,30 +258,23 @@ fn get_one(
     item_id: &str,
     scans: &State<Scans>,
     accounts: &State<FavaAccounts>,
-    beans: &State<Repository<Beans>>,
     mut context: Context,
     user: AuthUser,
 ) -> Option<Result<Template, Redirect>> {
-    unwrap!(user);
+    user.check().ok()?;
+
     scans.with(|state| {
         let scan = get_foo!(scan state, scan_id);
         let item = get_foo!(item scan, ID(item_id.to_string()));
 
-        beans.with(|beans| {
-            // let (_left, right) = beans.categories.split_at(9);
+        let items = json!({
+            "errors": [],
+            "item": item,
+            "accounts": accounts.accounts,
+        });
 
-            // let categories: Vec<_> = beans.categories.iter().map(|(_, x)| x).collect();
-
-            let items = json!({
-                "errors": [],
-                "item": item,
-                "categories_left": beans.categories,
-                "accounts": accounts.accounts,
-            });
-
-            context.merge(items);
-            Ok(Template::render("scan/item", context.value())).into()
-        })
+        context.merge(items);
+        Ok(Template::render("fava/ingest/item", context.value())).into()
     })
 }
 
@@ -351,16 +284,11 @@ fn post_one(
     item_id: &str,
     user_input: Form<CategoriseForm<'_>>,
     scans: &State<Scans>,
-    beans: &State<Repository<Beans>>,
     user: AuthUser,
 ) -> Redirect {
-    if let Err(e) = user.r() {
+    if let Err(e) = user.check() {
         return e;
     }
-
-    beans.with_save(|beans| {
-        beans.inc_category(user_input.category);
-    });
 
     scans.with_save(|scans| {
         if let Some(scan) = scans.iter_mut().filter(|x| x.id == scan_id).next() {
@@ -373,7 +301,7 @@ fn post_one(
 
 #[delete("/<scan_id>/<item_id>")]
 fn delete_one(scan_id: &str, item_id: &str, scans: &State<Scans>, user: AuthUser) -> Redirect {
-    if let Err(e) = user.r() {
+    if let Err(e) = user.check() {
         return e;
     }
 
@@ -406,15 +334,7 @@ pub fn fuel(rocket: Rocket<Build>) -> Rocket<Build> {
         }))
         .attach(Repository::<Vec<Scan>>::adhoc(
             "scans config",
-            |c: &ScanConfigConfig| c.scan_config_location.to_string(),
+            |c: &ScanConfigConfig| c.ingest_file_location.to_string(),
             vec![],
-        ))
-        .attach(Repository::<Beans>::adhoc(
-            "beans config",
-            |c: &ScanConfigConfig| c.bean_config_location.to_string(),
-            Beans {
-                categories: Vec::new(),
-                pay_options: Vec::new(),
-            },
         ))
 }

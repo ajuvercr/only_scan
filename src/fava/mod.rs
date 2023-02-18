@@ -17,19 +17,13 @@ struct FavaConfig {
 #[derive(Deserialize, Debug)]
 struct ScanConfigConfig {
     #[serde(default = "default_location")]
-    scan_config_location: String,
-    #[serde(default = "default_beans_location")]
-    bean_config_location: String,
+    ingest_file_location: String,
     #[serde(default = "default_beancount_location")]
     beancount_location: String,
 }
 
 fn default_location() -> String {
     "scan_config.json".to_string()
-}
-
-fn default_beans_location() -> String {
-    "beans_cofig.json".to_string()
 }
 
 fn default_beancount_location() -> String {
@@ -46,7 +40,7 @@ async fn beancount(
     user: AuthUser,
     config: &State<FavaConfig>,
 ) -> Result<Template, Redirect> {
-    unwrap!(user);
+    user.check()?;
     context.add("fava_base", config.fava_base.clone());
     Ok(Template::render("fava/fava", context.value()))
 }

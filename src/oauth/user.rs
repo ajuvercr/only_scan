@@ -19,8 +19,14 @@ pub enum Result<T, E> {
     Err(E),
 }
 impl<T, E> Result<T, E> {
-    pub fn r(self) -> std::result::Result<T, E> {
+    pub fn check(self) -> std::result::Result<T, E> {
         self.into()
+    }
+    pub fn check_err<EE>(self, e: EE) -> std::result::Result<T, EE> {
+        match self {
+            Result::Ok(x) => Ok(x),
+            _ => Err(e),
+        }
     }
 }
 
@@ -63,21 +69,6 @@ impl<T, E> From<std::result::Result<T, E>> for Result<T, E> {
             Err(e) => Result::Err(e),
         }
     }
-}
-
-macro_rules! unwrap {
-    ($l:expr, $e:expr) => {
-        match $l {
-            crate::oauth::AuthUser::Ok(user) => user,
-            crate::oauth::AuthUser::Err(e) => return $e.into(),
-        }
-    };
-    ($l:expr) => {
-        match $l {
-            crate::oauth::AuthUser::Ok(user) => user,
-            crate::oauth::AuthUser::Err(e) => return Err(e).into(),
-        }
-    };
 }
 
 pub type AuthUser = Result<User, Redirect>;

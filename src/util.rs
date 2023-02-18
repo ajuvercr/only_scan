@@ -12,7 +12,6 @@ use std::fs;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Config {
-    pub database_url: String,
     pub oauth_base: String,
     pub client_id: String,
     pub client_secret: String,

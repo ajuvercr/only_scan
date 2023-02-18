@@ -12,10 +12,6 @@ rocket = { version = "0.5.0-rc.1", features = ["json"] }
 serde = { version = "1.0", features = ["derive"] }
 uuid = { version = "0.8", features = ["serde", "v4"] }
 
-diesel = { version = "1.4", features = ["postgres", "r2d2", "chrono"], optional=true }
-r2d2 = { version = "0.8.9", optional = true }
-r2d2-diesel = { version = "1.0.0", optional = true }
-
 feignhttp = { version = "0.3" }
 
 chrono = { version = "0.4", features = ["serde", "clock", "std"] }
@@ -25,8 +21,6 @@ rand = "0.8.4"
 time = { version = "0.2.27", features = ["serde"] }
 cool-id-generator = "1.0"
 
-crud_helper = { path = "./crud_helper" }
-
 byteorder = "0.3"
 
 base64 = "0.13.0"
@@ -34,19 +28,12 @@ base64 = "0.13.0"
 lazy_static = "1.0"
 
 
-[dependencies.rocket_sync_db_pools]
-version = "0.1.0-rc.1"
-features = ["diesel_postgres_pool"]
-optional = true
 
 [dev-dependencies]
 assert_matches = "1.1"
-diesel_migrations = { version = "1.4", features = ["postgres"] }
 lazy_static = "1.0"
 
 [dependencies.rocket_dyn_templates]
 version = "0.1.0-rc.1"
 features = ["handlebars"]
 
-[features]
-db = ["dep:diesel", "dep:r2d2", "dep:r2d2-diesel", "dep:rocket_sync_db_pools"]

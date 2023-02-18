@@ -28,14 +28,11 @@ impl<'r> FromRequest<'r> for Context {
         );
         let routes = json! {[
             {"path": "/", "name": "Home"},
-            {"path": "/scan", "name": "Scan"},
-            {"path": "/scrum", "name": "Scrum"},
             {"path": "/fava", "name": "Fava", "subpaths": [
                 {"path": "/fava/ingest", "name": "Ingest"},
                 {"path": "/fava/beancount", "name": "Beancount"},
                 {"path": "/fava/graphs", "name": "Graphs"},
             ]},
-
         ]};
 
         match req.guard::<AuthUser>().await {
