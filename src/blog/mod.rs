@@ -27,16 +27,36 @@ pub enum RPCError {
 pub type HTML = String;
 #[derive(thiserror::Error, Debug)]
 pub enum BlogError {
-    #[error("rpc error")]
+    #[error("rpc error {0}")]
     Disconnect(#[from] RPCError),
     #[error("Not found.")]
     NotFound,
-    #[error("IO error.")]
+    #[error("IO error. {0}")]
     IO(std::io::ErrorKind),
-    #[error("Notify error.")]
+    #[error("Notify error. {0}")]
     Notify(#[from] notify::Error),
-    #[error("Frontmatter error.")]
-    Front(#[from] serde_yaml::Error),
+    #[error("Frontmatter error ({1}). {0}")]
+    Front(serde_yaml::Error, String),
+    #[error("Blogpost without frontmatter")]
+    NoFrontmatter,
+}
+impl From<std::io::Error> for BlogError {
+    fn from(e: std::io::Error) -> Self {
+        Self::IO(e.kind())
+    }
+}
+
+impl<'r> rocket::response::Responder<'r, 'static> for BlogError {
+    fn respond_to(
+        self,
+        req: &'r rocket::request::Request<'_>,
+    ) -> rocket::response::Result<'static> {
+        let ctx = json!({
+            "error": self.to_string(),
+        });
+        let template = Template::render("error", &ctx);
+        template.respond_to(req)
+    }
 }
 
 pub struct RPC<A, R> {
@@ -52,8 +72,16 @@ impl<A, R> RPC<A, R> {
 }
 
 #[get("/")]
-async fn get_blogs(service: &State<BlogServiceClient>) -> Option<Template> {
-    None
+async fn get_blogs(
+    mut ctx: Context,
+    service: &State<BlogServiceClient>,
+) -> Result<Template, BlogError> {
+    let shorts = service.index().await?;
+    let extra = json!({
+        "shorts": shorts.as_ref(),
+    });
+    ctx.merge(extra);
+    Ok(Template::render("blog/index", &ctx.value()))
 }
 
 #[get("/<uuid>")]

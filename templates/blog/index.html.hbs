@@ -1,0 +1,29 @@
+{{#*inline "headers"}}
+<title>Fava | Only_Scan</title>
+{{/inline}}
+
+{{#*inline "page"}}
+
+<div style="margin: auto; max-width: 1200px;">
+
+{{#each shorts}}
+<p>
+  <a href={{{this.link}}}>
+  {{this.front.title}}
+  </a>
+  <div>
+  {{this.time_str}}
+  </div>
+  <div>
+  {{#each this.front.tags}}
+  <div>{{this}}</div>
+  {{/each}}
+  </div>
+</p>
+{{/each}}
+
+</div>
+
+{{/inline}}
+
+{{> base}}

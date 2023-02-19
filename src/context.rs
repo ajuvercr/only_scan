@@ -28,6 +28,7 @@ impl<'r> FromRequest<'r> for Context {
         );
         let routes = json! {[
             {"path": "/", "name": "Home"},
+            {"path": "/blog", "name": "Blog"},
             {"path": "/fava", "name": "Fava", "subpaths": [
                 {"path": "/fava/ingest", "name": "Ingest"},
                 {"path": "/fava/beancount", "name": "Beancount"},

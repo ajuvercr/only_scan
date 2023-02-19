@@ -1,12 +1,10 @@
 use std::collections::HashMap;
-use std::ffi::OsString;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use async_trait::async_trait;
 
-use notify::event::DataChange;
 use notify::event::ModifyKind;
 use notify::recommended_watcher;
 use notify::EventKind;
@@ -18,10 +16,8 @@ use rocket::tokio::sync::mpsc;
 
 use super::post::APost;
 use super::post::Post;
-use super::{BlogError, RPCError, HTML, RPC};
-use pulldown_cmark::html;
-use pulldown_cmark::Options;
-use pulldown_cmark::Parser;
+use super::post::PostShort;
+use super::{BlogError, RPCError, RPC};
 
 #[async_trait]
 pub trait Handler<A: Send + 'static, R: Send + 'static> {
@@ -39,15 +35,30 @@ pub trait Handler<A: Send + 'static, R: Send + 'static> {
 /// BlogRequest is a RPC call that takes in a String and tries to return a HTML element
 pub type BlogRequest = RPC<String, Result<APost, BlogError>>;
 
+pub type AShorts = Arc<Vec<PostShort>>;
+pub type BlogIndexRequest = RPC<(), Result<AShorts, BlogError>>;
+
 /// Client that interacts with the actual BlogService
 pub struct BlogServiceClient {
-    tx: mpsc::Sender<BlogRequest>,
+    blog_request: mpsc::Sender<BlogRequest>,
+    index_request: mpsc::Sender<BlogIndexRequest>,
 }
 
 impl BlogServiceClient {
     pub async fn get(&self, path: &str) -> Result<APost, BlogError> {
         let (rpc, rx) = BlogRequest::new(path.to_string());
-        self.tx.send(rpc).await.map_err(|_| RPCError::RequestSend)?;
+        self.blog_request
+            .send(rpc)
+            .await
+            .map_err(|_| RPCError::RequestSend)?;
+        rx.await.map_err(|_| RPCError::ResponseReceive)?
+    }
+    pub async fn index(&self) -> Result<Arc<Vec<PostShort>>, BlogError> {
+        let (rpc, rx) = BlogIndexRequest::new(());
+        self.index_request
+            .send(rpc)
+            .await
+            .map_err(|_| RPCError::RequestSend)?;
         rx.await.map_err(|_| RPCError::ResponseReceive)?
     }
 }
@@ -58,20 +69,41 @@ impl BlogServiceClient {
 pub struct BlogService {
     base: PathBuf,
     posts: HashMap<PathBuf, Arc<Post>>,
+    shorts: AShorts,
     blog_request: mpsc::Receiver<BlogRequest>,
+    index_request: mpsc::Receiver<BlogIndexRequest>,
 }
 
 impl BlogService {
     pub fn new(base: PathBuf) -> (Self, BlogServiceClient) {
         let (tx, rx) = mpsc::channel(10);
+        let (itx, irx) = mpsc::channel(10);
         (
             Self {
                 blog_request: rx,
+                index_request: irx,
                 posts: HashMap::new(),
+                shorts: Arc::new(Vec::new()),
                 base,
             },
-            BlogServiceClient { tx },
+            BlogServiceClient {
+                index_request: itx,
+                blog_request: tx,
+            },
         )
+    }
+
+    fn calc_shorts(&mut self) {
+        let mut shorts: Vec<_> = self
+            .posts
+            .iter()
+            .map(|(key, value)| {
+                let path = key.strip_prefix(&self.base).unwrap();
+                PostShort::new(value, format!("/blog/{}", path.display()))
+            })
+            .collect();
+        shorts.sort_by(|a, b| a.date.cmp(&b.date).reverse());
+        self.shorts = Arc::new(shorts);
     }
 
     fn check_fut<'a, 'b: 'a>(&'a mut self, path: &'b Path) -> BoxFuture<Result<(), BlogError>> {
@@ -113,9 +145,10 @@ impl BlogService {
                 println!("unhandled event {:?}", event);
             }
         }
+        self.calc_shorts();
     }
 
-    pub async fn start(mut self) -> Result<(), BlogError> {
+    async fn inner_start(mut self) -> Result<(), BlogError> {
         use notify::Watcher;
         let (file_tx, mut file_rx) = mpsc::channel(10);
         let mut watcher = recommended_watcher(move |x| file_tx.blocking_send(x).unwrap())?;
@@ -123,6 +156,7 @@ impl BlogService {
 
         let base = self.base.clone();
         self.check(&base).await?;
+        self.calc_shorts();
 
         loop {
             rocket::tokio::select! {
@@ -133,15 +167,29 @@ impl BlogService {
                         break;
                     }
                 },
+                req = self.index_request.recv() => {
+                    if let Some(req) = req {
+                        self.handle_rpc(req).await?;
+                    } else {
+                        break;
+                    }
+                },
                 req = file_rx.recv() => {
                     if let Some(Ok(x)) = req {
                         self.handle_file_event(x).await;
                     }
                 },
+
             };
         }
 
         Ok(())
+    }
+
+    pub async fn start(self) {
+        if let Err(err) = self.inner_start().await {
+            eprintln!("{}", err);
+        }
     }
 }
 
@@ -155,5 +203,12 @@ impl Handler<String, Result<APost, BlogError>> for BlogService {
         } else {
             return Err(BlogError::NotFound);
         }
+    }
+}
+
+#[async_trait]
+impl Handler<(), Result<AShorts, BlogError>> for BlogService {
+    async fn handle(&mut self, _: ()) -> Result<AShorts, BlogError> {
+        Ok(self.shorts.clone())
     }
 }
