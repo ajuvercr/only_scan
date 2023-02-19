@@ -27,13 +27,13 @@ pub mod repository;
 pub mod blog;
 pub mod util;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 use context::Context;
 use rocket::{
     fairing::AdHoc,
     fs::{FileServer, Options},
-    routes, Build, Rocket, Route,
+    routes, Route,
 };
 use rocket_dyn_templates::{handlebars::handlebars_helper, Template};
 
@@ -101,7 +101,10 @@ async fn main() -> Result<(), rocket::Error> {
         }))
         .attach(debug::Debug);
 
-    let (service, rocket) = blog::fuel(rocket, "./blogs");
+    let mut path = PathBuf::new();
+    path.push("blogs");
+    let path = path.canonicalize().unwrap();
+    let (service, rocket) = blog::fuel(rocket, path);
 
     let (service, rocket) = rocket::futures::join!(service.start(), rocket.launch());
     Ok(())
