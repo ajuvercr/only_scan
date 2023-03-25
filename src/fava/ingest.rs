@@ -9,6 +9,7 @@ use rocket::serde::{Deserialize, Serialize};
 
 use rocket::data::ToByteUnit;
 use rocket::form::Form;
+use std::collections::HashMap;
 use std::fs;
 use std::io::Cursor;
 
@@ -42,14 +43,30 @@ macro_rules! get_foo {
     };
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
-struct FavaAccounts {
-    accounts: Vec<String>,
-    pay_options: Vec<String>,
+#[derive(Serialize, PartialEq, PartialOrd, Ord, Eq, Clone, Debug)]
+struct Account {
+    full: String,
+    segments: Vec<(String, &'static str)>,
 }
 
+#[derive(Serialize, Debug, Clone)]
+struct FavaAccounts {
+    accounts: Vec<Account>,
+    pay_options: Vec<Account>,
+}
+
+const COLORS: &[&'static str] = &[
+    "#F5E1FF", "#FFC107", "#FF4081", "#00BCD4", "#F44336", "#9C27B0", "#8BC34A", "#FF9800",
+    "#E91E63", "#4CAF50", "#2196F3", "#673AB7", "#FFEB3B", "#00FFBF", "#FF5722", "#607D8B",
+    "#FFCDD2", "#CFD8DC", "#B0BEC5", "#FFD54F",
+];
+
 impl FavaAccounts {
-    fn parse_account_line(line: &str) -> Option<String> {
+    fn parse_account_line(
+        line: &str,
+        count: &mut usize,
+        colors: &mut HashMap<String, &'static str>,
+    ) -> Option<Account> {
         let mut words = line.split(" ");
         words.next(); // Date
         let action = words.next()?;
@@ -57,7 +74,22 @@ impl FavaAccounts {
             return None;
         }
 
-        words.next().map(String::from)
+        let full = words.next().map(String::from)?;
+        let segments = full
+            .split(':')
+            .map(|x| {
+                if let Some(color) = colors.get(x) {
+                    (x.to_string(), *color)
+                } else {
+                    let color = COLORS[*count % COLORS.len()];
+                    *count += 1;
+                    colors.insert(x.to_string(), color);
+                    (x.to_string(), color)
+                }
+            })
+            .collect();
+
+        Some(Account { full, segments })
     }
 
     fn parse_name_assets(x: &str) -> Option<&str> {
@@ -73,13 +105,16 @@ impl FavaAccounts {
         }
     }
 
-    pub async fn init(config: &ScanConfigConfig) -> Self {
+    pub fn init(config: &ScanConfigConfig) -> Self {
         let bean_file =
             fs::read_to_string(&config.beancount_location).expect("No beancount file found!");
 
+        let mut count = 0;
+        let mut colors = HashMap::new();
+
         let mut accounts: Vec<_> = bean_file
             .lines()
-            .flat_map(FavaAccounts::parse_account_line)
+            .flat_map(|x| FavaAccounts::parse_account_line(x, &mut count, &mut colors))
             .collect();
 
         let name_assets = bean_file
@@ -90,7 +125,7 @@ impl FavaAccounts {
         accounts.sort();
         let pay_options: Vec<_> = accounts
             .iter()
-            .filter(|x| x.starts_with(name_assets))
+            .filter(|x| x.full.starts_with(name_assets))
             .cloned()
             .collect();
 
@@ -325,7 +360,7 @@ pub fn fuel(rocket: Rocket<Build>) -> Rocket<Build> {
         .attach(AdHoc::try_on_ignite("beans", |rocket| {
             Box::pin(async move {
                 if let Some(config) = rocket.state::<ScanConfigConfig>() {
-                    let accounts = FavaAccounts::init(&config).await;
+                    let accounts = FavaAccounts::init(&config);
                     Ok(rocket.manage(accounts))
                 } else {
                     Err(rocket)

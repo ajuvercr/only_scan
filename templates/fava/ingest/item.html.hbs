@@ -43,8 +43,10 @@
 
     <div class="beancount-accounts">
         {{#each accounts}}
-          <div class="is-clickable column account" onclick='submit("{{this}}")'>
-                {{this}}
+          <div class="is-clickable column account" onclick='submit("{{this.full}}")'>
+            {{#each this.segments}}
+                <span style="color: {{this.1}}" >{{this.0}}</span>
+            {{/each}}
           </div>
         {{/each}}
     </div>
@@ -63,9 +65,8 @@
     font-size: 1.1em;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr) ) ;
+
 }
-
-
 </style>
 
 <script>
