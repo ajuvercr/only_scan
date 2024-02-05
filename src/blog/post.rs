@@ -57,7 +57,8 @@ impl Post {
         let front: FrontMatter = if lines.next().unwrap_or("") == "---" {
             let front: String = lines
                 .take_while(|&p| p != "---")
-                .intersperse("\n")
+                .flat_map(|x| ["\n", x])
+                .skip(1)
                 .collect();
             match serde_yaml::from_str(&front) {
                 Ok(x) => x,

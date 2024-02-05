@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{collections::HashMap, str::FromStr};
 
 use crate::repository::Repository;
 use chrono::NaiveDate;
@@ -164,35 +164,126 @@ impl Statement {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct GroupedStatement {
+    pub key: String,
+    pub statements: Vec<Statement>,
+    pub category: Option<String>,
+}
+
+impl GroupedStatement {
+    pub fn new(key: String) -> GroupedStatement {
+        Self {
+            key,
+            statements: Vec::new(),
+            category: None,
+        }
+    }
+
+    pub fn total(&self) -> isize {
+        self.statements.iter().map(|x| x.amount).sum()
+    }
+
+    pub fn delete(&mut self, id: &str) {
+        self.statements.retain(|x| x.id.0 != id);
+    }
+
+    pub fn needs_categorised(&self) -> bool {
+        self.category.is_none()
+    }
+
+    pub fn add_statement(&mut self, statement: &Statement) {
+        self.statements.push(statement.clone());
+    }
+
+    pub fn sort(&mut self) {
+        self.statements.sort_by_key(|x| x.date);
+    }
+}
+
 pub type Scans = Repository<Vec<Scan>>;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Scan {
     pub id: String,
-    pub items: Vec<Statement>,
+    pub grouped: Vec<GroupedStatement>,
 }
 
 #[allow(deprecated)]
 impl Scan {
     pub fn new(items: Vec<Statement>) -> Self {
         let id = uuid::Uuid::new_v4().to_string();
-        Self { id, items }
-    }
-    pub fn delete(&mut self, id: &str) {
-        self.items.retain(|x| x.id.0 != id);
+
+        let mut grouped: HashMap<String, GroupedStatement> = HashMap::new();
+
+        items.iter().for_each(|x| {
+            let key = format!(
+                "{} {}",
+                x.description
+                    .as_ref()
+                    .map(|x| x.label.as_str())
+                    .unwrap_or(""),
+                x.tegenpartij.as_deref().unwrap_or("")
+            );
+            if let Some(gs) = grouped.get_mut(&key) {
+                gs.add_statement(x)
+            } else {
+                let mut statemens = GroupedStatement::new(key.clone());
+                statemens.add_statement(x);
+                grouped.insert(key, statemens);
+            }
+        });
+
+        grouped.values_mut().for_each(|x| x.sort());
+        let mut grouped: Vec<GroupedStatement> = grouped.into_values().collect();
+
+        grouped.sort_by_key(|x| x.statements.iter().map(|x| x.amount).sum::<isize>());
+
+        grouped.push(GroupedStatement::new("deleted".to_string()));
+
+        Self { id, grouped }
     }
 
-    pub fn get_first<'a>(&'a self) -> Option<&'a Statement> {
-        self.items.iter().filter(|x| x.needs_categorised()).next()
+    pub fn delete_item(&mut self, group_id: &str, item_id: &str) {
+        let mut item = None;
+        if let Some(group) = self.grouped.iter_mut().filter(|x| x.key == group_id).next() {
+            if let Some(x) = group.statements.iter().filter(|x| x.id.0 == item_id).next() {
+                item = Some(x.clone());
+            }
+
+            group.statements.retain(|x| x.id.0 != item_id)
+        }
+
+        if let Some(y) = item {
+            self.grouped.last_mut().unwrap().add_statement(&y);
+        }
+    }
+
+    pub fn delete(&mut self, id: &str) {
+        self.grouped.retain(|x| x.key != id);
+    }
+
+    pub fn get_first<'a>(&'a self) -> Option<&'a GroupedStatement> {
+        self.grouped.iter().filter(|x| x.needs_categorised()).next()
     }
 
     pub fn count_done(&self) -> (usize, usize) {
-        let done = self.items.iter().filter(|x| !x.needs_categorised()).count();
-        (done, self.items.len())
+        let done = self
+            .grouped
+            .iter()
+            .filter(|x| !x.needs_categorised())
+            .map(|x| x.statements.len())
+            .sum();
+
+        let total = self.grouped.iter().map(|x| x.statements.len()).sum();
+        (done, total)
     }
 
     pub fn categorise(&mut self, uuid: &str, category: &str) {
-        if let Some(item) = self.items.iter_mut().filter(|x| x.id.0 == uuid).next() {
+        if let Some(item) = self.grouped.iter_mut().filter(|x| x.key == uuid).next() {
+            item.statements
+                .iter_mut()
+                .for_each(|x| x.category = Some(category.to_string()));
             item.category = Some(category.to_string());
         }
     }

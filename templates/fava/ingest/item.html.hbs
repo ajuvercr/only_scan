@@ -10,36 +10,55 @@
 
         <div class="media-content">
 
-            <p>
-                {{item.description.way}}
-                {{#if item.description.user}}
-                door {{item.description.user}}
-                {{/if}}
-            </p>
+      <p>
+        {{item.key}}
+      </p>
 
-            <p>
-                {{item.description.label}}
-                {{item.note.free}}
-            </p>
 
-            {{#if item.tegenpartij}}
-            <p>
-                naar {{item.tegenpartij}}
-            </p>
-            {{/if}}
+<table>
+  <thead>
+    <tr>
+      <th scope="col">Tegenpartij</th>
+      <th scope="col">Method</th>
+      <th scope="col">User</th>
+      <th scope="col">label</th>
+      <th scope="col">note</th>
+      <th scope="col">Date</th>
+      <th scope="col">amount</th>
+      <th scope="col">Delete</th>
+    </tr>
+  </thead>
+  <tbody>
 
-            <p>
-                <span class="has-text-weight-bold">{{ euro item.amount}}</span> euro op {{item.date}}
-            </p>
-        </div>
-
-        <div class="media-right">
-
+      {{#each item.statements}}
+          <tr>
+            <td>{{#if this.tegenpartij}}{{this.tegenpartij}}{{/if}}</td>
+            <td>{{this.description.way}}</td>
+            <td>{{#if this.description.user}}{{this.description.user}}{{/if}}</td>
+            <td>{{this.description.label}}</td>
+            <td>{{this.description.note.free}}</td>
+            <td>{{this.date}}</td>
+            <td>{{euro this.amount}}</td>
+            <td onclick="delete_item(window.location.href + '/{{this.id}}')">
             <button class="delete is-large is-light"="delete_f(event)">
                 Delete
             </button>
-        </div>
-    </div>
+            </td>
+          </tr>
+        {{/each}}
+  </tbody>
+  <tfoot>
+    <tr>
+      <th scope="row" colspan="6">Total amount</th>
+       <td>{{euro total}}</td>
+       <td onclick="delete_item('#')">
+        <button class="delete is-large is-light"="delete_f(event)">
+            Delete
+        </button>
+      </td>
+    </tr>
+  </tfoot>
+</table>
 
     <div class="beancount-accounts">
         {{#each accounts}}
@@ -67,6 +86,46 @@
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr) ) ;
 
 }
+
+thead,
+tfoot, thead th, tfoot th {
+    background-color: #3f87a6;
+    color: #fff;
+}
+
+
+tbody {
+    background-color: #e4f0f5;
+}
+
+caption {
+    padding: 10px;
+    caption-side: bottom;
+}
+
+table {
+    border-collapse: collapse;
+    border: 2px solid rgb(200, 200, 200);
+    letter-spacing: 1px;
+    font-family: sans-serif;
+    font-size: .8rem;
+}
+
+td,
+th {
+    border: 1px solid rgb(190, 190, 190);
+    padding: 5px 10px;
+  color: black;
+}
+
+td:last-child:hover {
+    background-color: red;
+  cursor: pointer;
+}
+
+td {
+    text-align: center;
+}
 </style>
 
 <script>
@@ -92,14 +151,16 @@
         form.submit();
     }
 
-    async function delete_f(event) {
-        event.preventDefault();
-        const resp = await fetch("#", {
-            method: 'DELETE',
-            headers: {
-                'Content-type': 'application/json'
-            }
-        });
-        window.location.href = resp.url;
+    async function delete_item(location) {
+      event.preventDefault();
+      const resp = await fetch(location, {
+          method: 'DELETE',
+          headers: {
+              'Content-type': 'application/json'
+          }
+      });
+
+      window.location.replace(resp.url);
+
     }
 </script>

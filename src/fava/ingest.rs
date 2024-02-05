@@ -5,7 +5,7 @@ use rocket_dyn_templates::Template;
 use crate::fava::ScanConfigConfig;
 use crate::{context::Context, oauth::AuthUser};
 use rocket::serde::json::serde_json::json;
-use rocket::serde::{Deserialize, Serialize};
+use rocket::serde::Serialize;
 
 use rocket::data::ToByteUnit;
 use rocket::form::Form;
@@ -26,7 +26,7 @@ macro_rules! get_foo {
             .next()?
     };
     (item $state:expr, $item_id:expr) => {
-        $state.items.iter().filter(|x| x.id == $item_id).next()?
+        $state.grouped.iter().filter(|x| x.key == $item_id).next()?
     };
     (scan mut $state:expr, $scan_id:expr) => {
         $state
@@ -216,11 +216,11 @@ fn get_scan(
         if let Some(item) = scan.get_first() {
             Err(Redirect::to(uri!(
                 "/fava/ingest",
-                get_one(uuid, item.id.0.to_string())
+                get_one(uuid, item.key.to_string())
             )))
             .into()
         } else {
-            let per_category = scan.items.iter().flat_map(|x| x.category.as_ref()).fold(
+            let per_category = scan.grouped.iter().flat_map(|x| x.category.as_ref()).fold(
                 std::collections::HashMap::new(),
                 |mut h, e| {
                     if let Some(c) = h.get_mut(e) {
@@ -232,9 +232,12 @@ fn get_scan(
                 },
             );
 
+            let total: usize = scan.grouped.iter().map(|x| x.statements.len()).sum();
+
+            // TODO
             let add = json! {{
                 "pay_options": accounts.pay_options,
-                "total": scan.items.len(),
+                "total": total,
                 "per_category": per_category,
             }};
 
@@ -276,8 +279,14 @@ fn post_scan(
             .open(location)
             .ok()?;
 
-        scan.items.sort_by_key(|x| x.date);
-        for item in scan.items.iter() {
+        let mut items: Vec<_> = scan
+            .grouped
+            .iter()
+            .flat_map(|x| x.statements.iter().cloned())
+            .collect();
+
+        items.sort_by_key(|x| x.date);
+        for item in items.into_iter() {
             let output = item.to_output(user_input.pay);
             writeln!(file, "\n{}", output).ok()?;
         }
@@ -300,12 +309,14 @@ fn get_one(
 
     scans.with(|state| {
         let scan = get_foo!(scan state, scan_id);
-        let item = get_foo!(item scan, ID(item_id.to_string()));
+        let item = get_foo!(item scan, item_id);
 
+        let total = item.total();
         let items = json!({
             "errors": [],
             "item": item,
             "accounts": accounts.accounts,
+            "total": total
         });
 
         context.merge(items);
@@ -335,7 +346,7 @@ fn post_one(
 }
 
 #[delete("/<scan_id>/<item_id>")]
-fn delete_one(scan_id: &str, item_id: &str, scans: &State<Scans>, user: AuthUser) -> Redirect {
+fn delete_group(scan_id: &str, item_id: &str, scans: &State<Scans>, user: AuthUser) -> Redirect {
     if let Err(e) = user.check() {
         return e;
     }
@@ -350,11 +361,43 @@ fn delete_one(scan_id: &str, item_id: &str, scans: &State<Scans>, user: AuthUser
     Redirect::to(format!("/fava/ingest/{}", scan_id))
 }
 
+#[delete("/<scan_id>/<group_id>/<item_id>")]
+fn delete_one(
+    scan_id: &str,
+    group_id: &str,
+    item_id: &str,
+    scans: &State<Scans>,
+    user: AuthUser,
+) -> Redirect {
+    if let Err(e) = user.check() {
+        return e;
+    }
+
+    println!("Deleting {} {} {}", scan_id, group_id, item_id);
+    scans.with_save(|scans| {
+        if let Some(scan) = scans.iter_mut().filter(|x| x.id == scan_id).next() {
+            scan.delete_item(group_id, item_id);
+        }
+    });
+
+    println!("Redirecting to /fava/ingest/{}", scan_id);
+    Redirect::to(format!("/fava/ingest/{}", scan_id))
+}
+
 pub fn fuel(rocket: Rocket<Build>) -> Rocket<Build> {
     rocket
         .mount(
             "/fava/ingest",
-            routes![get, new_post, get_scan, post_scan, get_one, post_one, delete_one],
+            routes![
+                get,
+                new_post,
+                get_scan,
+                post_scan,
+                get_one,
+                post_one,
+                delete_group,
+                delete_one
+            ],
         )
         .attach(AdHoc::config::<ScanConfigConfig>())
         .attach(AdHoc::try_on_ignite("beans", |rocket| {

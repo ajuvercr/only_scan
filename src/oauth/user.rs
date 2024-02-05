@@ -1,6 +1,4 @@
-use std::{convert::Infallible, ops::FromResidual};
-
-use std::ops::{ControlFlow, Try};
+use std::convert::Infallible;
 
 use rocket::{
     request::{FromRequest, Outcome},
@@ -26,29 +24,6 @@ impl<T, E> Result<T, E> {
         match self {
             Result::Ok(x) => Ok(x),
             _ => Err(e),
-        }
-    }
-}
-
-impl<T, E, F: From<E>> FromResidual<Result<Infallible, E>> for Result<T, F> {
-    fn from_residual(residual: Result<Infallible, E>) -> Self {
-        match residual {
-            Result::Err(e) => Result::Err(From::from(e)),
-            _ => panic!("Infallible not infallible"),
-        }
-    }
-}
-
-impl<T, E> Try for Result<T, E> {
-    type Output = T;
-    type Residual = Result<Infallible, E>;
-    fn from_output(output: Self::Output) -> Self {
-        Result::Ok(output)
-    }
-    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
-        match self {
-            Result::Ok(x) => ControlFlow::Continue(x),
-            Result::Err(x) => ControlFlow::Break(Result::Err(x)),
         }
     }
 }
