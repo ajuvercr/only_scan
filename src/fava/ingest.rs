@@ -1,3 +1,4 @@
+use rocket::tokio::io::AsyncReadExt;
 use rocket::Data;
 use rocket::{fairing::AdHoc, response::Redirect, routes, Build, Rocket, State};
 use rocket_dyn_templates::Template;
@@ -172,15 +173,26 @@ async fn new_post(
 ) -> Result<Option<Redirect>, Redirect> {
     user.check()?;
 
-    let string = data
-        .open(512u32.megabytes())
-        .into_string()
-        .await
+    let mut buf = Vec::new();
+    data.open(512u32.megabytes()).read_to_end(&mut buf).await
         .map_err(|e| {
             eprintln!("{:?}", e);
             Redirect::to("/fava")
-        })?
-        .into_inner();
+        })?;
+    
+    let string = String::from_utf8_lossy(&buf);
+        // .read_to_string(&mut string)
+        // .await
+
+    // let string = data
+    //     .open(512u32.megabytes())
+    //     .into_string()
+    //     .await
+    //     .map_err(|e| {
+    //         eprintln!("{:?}", e);
+    //         Redirect::to("/fava")
+    //     })?
+    //     .into_inner();
 
     let mut cursor = Cursor::new(string.replace(",", "."));
 

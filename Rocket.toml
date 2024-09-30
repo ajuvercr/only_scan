@@ -7,7 +7,7 @@ fava_base = "http://localhost:5000/"
 beancount_location = "main.bean"
 
 [default]
-oauth_base = "https://oauth.avercruysse.be"
+oauth_base = "https://oauth.ajuvercr.be"
 # client_id = "only-scan"
 # client_secret= "Y5xSinM49kNIsw3Tcn02pTXYHO2YED9zRqJTJukzwMGp68lajc34kArNSHPzcWHq"
 client_id = "only_scan_dev"
